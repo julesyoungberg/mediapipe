@@ -179,12 +179,12 @@ http_archive(
     sha256 = "8b7b16ceb363420e0fd499576daf73fa338adb0b1449f58bea7862766baa1ac7"
 )
 
-http_archive(
-    name = "opencv",
-    build_file_content = all_content,
-    strip_prefix = "opencv-3.4.10",
-    urls = ["https://github.com/opencv/opencv/archive/3.4.10.tar.gz"],
-)
+#http_archive(
+#    name = "opencv",
+#    build_file_content = all_content,
+#    strip_prefix = "opencv-3.4.10",
+#    urls = ["https://github.com/opencv/opencv/archive/3.4.10.tar.gz"],
+#)
 
 new_local_repository(
     name = "linux_opencv",
