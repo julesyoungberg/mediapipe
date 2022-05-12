@@ -144,12 +144,12 @@ exports_files(
     visibility = ["//visibility:public"],
 )
 
-cc_binary(
-    name = "libmediagraph.dylib",
+cc_library(
+    name = "cpuhost",
     srcs = [
 	    "cpuhost.cc",
     ],
-    linkshared = 1,
+    alwayslink = 1,
     visibility = ["//visibility:public"],
     deps = [
 	    "//mediapipe/framework:calculator_framework",
@@ -163,5 +163,21 @@ cc_binary(
         "//mediapipe/graphs/hand_tracking:desktop_tflite_calculators",
         "//mediapipe/graphs/face_mesh:desktop_calculators",
         "//mediapipe/graphs/face_mesh:desktop_live_calculators",
+    ],
+)
+
+cc_binary(
+    name = "mediagraph",
+    linkshared = 1,
+    deps = [
+        ":cpuhost",
+    ],
+)
+
+cc_binary(
+    name = "libmediagraph.dylib",
+    linkshared = 1,
+    deps = [
+        ":cpuhost",
     ],
 )
