@@ -16,8 +16,8 @@
 #include <cstdlib>
 #include <string>
 
-#include "absl/flags/flag.h"
-#include "absl/flags/parse.h"
+// #include "absl/flags/flag.h"
+// #include "absl/flags/parse.h"
 #include "mediapipe/framework/calculator_graph.h"
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/formats/landmark.pb.h"
