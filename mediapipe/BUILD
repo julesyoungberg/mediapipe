@@ -145,15 +145,14 @@ exports_files(
 )
 
 cc_binary(
-    name = "mediagraph",
+    name = "libmediagraph.dylib",
     srcs = [
-	"cpuhost.cc", 
+	    "cpuhost.cc",
     ],
     linkshared = 1,
     visibility = ["//visibility:public"],
     deps = [
-    
-	"//mediapipe/framework:calculator_framework",
+	    "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/formats:image_frame",
         "//mediapipe/framework/formats:image_frame_opencv",
         "//mediapipe/framework/port:file_helpers",
