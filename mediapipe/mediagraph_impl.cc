@@ -25,7 +25,8 @@ MediagraphImpl::~MediagraphImpl() {
     }
 }
 
-absl::Status MediagraphImpl::Init(const char* graph, const char* output_node) {
+absl::Status MediagraphImpl::Init(GraphType graph_type, const char* graph, const char* output_node) {
+    m_graph_type = graph_type;
     LOG(INFO) << "Parsing graph config " << graph;
     mediapipe::CalculatorGraphConfig config = mediapipe::ParseTextProtoOrDie<mediapipe::CalculatorGraphConfig>(graph);
 
@@ -39,38 +40,8 @@ absl::Status MediagraphImpl::Init(const char* graph, const char* output_node) {
     return absl::OkStatus();
 }
 
-Landmark* MediagraphImpl::parsePacket(const mediapipe::Packet& packet) {
-    return nullptr;
-}
-
-Landmark* MediagraphImpl::Process(uint8_t* data, int width, int height) {
-    if (data == nullptr){
-        LOG(INFO) << __FUNCTION__ << " input data is nullptr!";
-        return nullptr;
-    }
-
-    int width_step = width * mediapipe::ImageFrame::ByteDepthForFormat(mediapipe::ImageFormat::SRGB) * mediapipe::ImageFrame::NumberOfChannelsForFormat(mediapipe::ImageFormat::SRGB);
-
-    auto input_frame_for_input = absl::make_unique<mediapipe::ImageFrame>(mediapipe::ImageFormat::SRGB, width, height, width_step, 
-                                                                (uint8*)data, mediapipe::ImageFrame::PixelDataDeleter::kNone);
-
-    m_frame_timestamp++;
-
-    if (!m_graph.AddPacketToInputStream(kInputStream, mediapipe::Adopt(input_frame_for_input.release()).At(mediapipe::Timestamp(m_frame_timestamp))).ok()) {
-        LOG(INFO) << "Failed to add packet to input stream. Call m_graph.WaitUntilDone() to see error (or destroy Example object)";
-        return nullptr;
-    }
-
-    mediapipe::Packet packet;
-    if (!m_poller->Next(&packet)){
-        LOG(INFO) << "Poller didnt give me a packet, sorry. Call m_graph.WaitUntilDone() to see error (or destroy Example object). Error probably is that models are not available under mediapipe/models or mediapipe/modules";
-        return nullptr;
-    }
-
-    return parsePacket(packet);
-}
-
-Landmark* PoseGraph::parsePacket(const mediapipe::Packet& packet) {
+Landmark* parsePosePacket(const mediapipe::Packet& packet) {
+    LOG(INFO) << "parsePosePacket()\n";
     Landmark output[33];
 
     auto& landmarks = packet.Get<mediapipe::NormalizedLandmarkList>();
@@ -92,7 +63,8 @@ Landmark* PoseGraph::parsePacket(const mediapipe::Packet& packet) {
     return output;
 }
 
-Landmark* HandsGraph::parsePacket(const mediapipe::Packet& packet) {
+Landmark* parseHandsPacket(const mediapipe::Packet& packet) {
+    LOG(INFO) << "parseHandsPacket()\n";
     Landmark output[42];
 
     auto& hands = packet.Get<std::vector<mediapipe::NormalizedLandmarkList>>();
@@ -136,7 +108,8 @@ Landmark* HandsGraph::parsePacket(const mediapipe::Packet& packet) {
     return output;
 }
 
-Landmark* FaceMeshGraph::parsePacket(const mediapipe::Packet& packet) {
+Landmark* parseFacePacket(const mediapipe::Packet& packet) {
+    LOG(INFO) << "parseFacePacket()\n";
     Landmark output[478];
 
     auto& faces = packet.Get<std::vector<mediapipe::NormalizedLandmarkList>>();
@@ -158,6 +131,48 @@ Landmark* FaceMeshGraph::parsePacket(const mediapipe::Packet& packet) {
     }
 
     return output;
+}
+
+Landmark* MediagraphImpl::parsePacket(const mediapipe::Packet& packet) {
+    LOG(INFO) << "MediagraphImpl::parsepacket()\n";
+    switch (m_graph_type) {
+        case GraphType::POSE:
+            return parsePosePacket(packet);
+        case GraphType::HANDS:
+            return parseHandsPacket(packet);
+        case GraphType::FACE:
+            return parseFacePacket(packet);
+        default:
+            LOG(INFO) << "NO MATCH\n";
+            return nullptr;
+    }
+}
+
+Landmark* MediagraphImpl::Process(uint8_t* data, int width, int height) {
+    if (data == nullptr){
+        LOG(INFO) << __FUNCTION__ << " input data is nullptr!";
+        return nullptr;
+    }
+
+    int width_step = width * mediapipe::ImageFrame::ByteDepthForFormat(mediapipe::ImageFormat::SRGB) * mediapipe::ImageFrame::NumberOfChannelsForFormat(mediapipe::ImageFormat::SRGB);
+
+    auto input_frame_for_input = absl::make_unique<mediapipe::ImageFrame>(mediapipe::ImageFormat::SRGB, width, height, width_step, 
+                                                                (uint8*)data, mediapipe::ImageFrame::PixelDataDeleter::kNone);
+
+    m_frame_timestamp++;
+
+    if (!m_graph.AddPacketToInputStream(kInputStream, mediapipe::Adopt(input_frame_for_input.release()).At(mediapipe::Timestamp(m_frame_timestamp))).ok()) {
+        LOG(INFO) << "Failed to add packet to input stream. Call m_graph.WaitUntilDone() to see error (or destroy Example object)";
+        return nullptr;
+    }
+
+    mediapipe::Packet packet;
+    if (!m_poller->Next(&packet)){
+        LOG(INFO) << "Poller didnt give me a packet, sorry. Call m_graph.WaitUntilDone() to see error (or destroy Example object). Error probably is that models are not available under mediapipe/models or mediapipe/modules";
+        return nullptr;
+    }
+
+    return parsePacket(packet);
 }
 
 }

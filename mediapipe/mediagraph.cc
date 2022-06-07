@@ -4,22 +4,10 @@
 namespace mediagraph {
 
 Mediagraph* Mediagraph::Create(GraphType graph_type, const char* graph_config, const char* output_node) {
-    MediagraphImpl* mediagraph;
-    switch (graph_type) {
-        case GraphType::POSE:
-            mediagraph = new PoseGraph();
-            break;
-        case GraphType::HANDS:
-            mediagraph = new HandsGraph();
-            break;
-        case GraphType::FACE:
-            mediagraph = new FaceMeshGraph();
-            break;
-        default:
-            return nullptr;
-    }
+    std::cout << "Mediagraph::Create()\n";
+    MediagraphImpl* mediagraph = new MediagraphImpl();
 
-    absl::Status status = mediagraph->Init(graph_config, output_node);
+    absl::Status status = mediagraph->Init(graph_type, graph_config, output_node);
     if (status.ok()) {
         return mediagraph;
     } else {
@@ -29,10 +17,8 @@ Mediagraph* Mediagraph::Create(GraphType graph_type, const char* graph_config, c
     }
 }
 
-Mediagraph::~Mediagraph() {}
-
 Landmark* Mediagraph::Process(uint8_t* data, int width, int height) {
-    return nullptr;
+    return dynamic_cast<MediagraphImpl*>(this)->Process(data, width, height);
 }
 
 }

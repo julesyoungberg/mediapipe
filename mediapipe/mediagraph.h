@@ -39,10 +39,11 @@ enum GraphType {
 
 class Mediagraph {
 public:
+    GraphType m_graph_type;
     // Create and initialize using provided graph
     // Returns nullptr if initialization failed
     static Mediagraph* Create(GraphType graph_type, const char* graph_config, const char* output_node);
-    virtual ~Mediagraph();
+    virtual ~Mediagraph() {}
 
     // Processes one frame and blocks until finished
     // Input data is expected to be ImageFormat::SRGB (24bits)
