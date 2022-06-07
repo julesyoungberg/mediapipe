@@ -40,25 +40,25 @@ private:
     absl::StatusOr<mediapipe::OutputStreamPoller> m_poller;
     size_t m_frame_timestamp = 0;
 
-    Landmark* parsePacket(const mediapipe::Packet& packet);
+    virtual Landmark* parsePacket(const mediapipe::Packet& packet);
 };
 
 class PoseGraph : public MediagraphImpl {
 private:
     // returns 33 landmarks
-    Landmark* parsePacket(const mediapipe::Packet& packet);
+    Landmark* parsePacket(const mediapipe::Packet& packet) override;
 };
 
 class HandsGraph : public MediagraphImpl {
 private:
     // returns 42 landmarks, the first 21 are for the left hand, the last 21 are for the right hand
-    Landmark* parsePacket(const mediapipe::Packet& packet);
+    Landmark* parsePacket(const mediapipe::Packet& packet) override;
 };
 
 class FaceMeshGraph : public MediagraphImpl {
 private:
     // returns 478 landmarks
-    Landmark* parsePacket(const mediapipe::Packet& packet);
+    Landmark* parsePacket(const mediapipe::Packet& packet) override;
 };
 
 }

@@ -29,4 +29,10 @@ Mediagraph* Mediagraph::Create(GraphType graph_type, const char* graph_config, c
     }
 }
 
+Mediagraph::~Mediagraph() {}
+
+Landmark* Mediagraph::Process(uint8_t* data, int width, int height) {
+    return nullptr;
+}
+
 }
