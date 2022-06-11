@@ -34,14 +34,22 @@ absl::Status MediagraphImpl::Init(GraphType graph_type, const char* graph, const
     MP_RETURN_IF_ERROR(m_graph.Initialize(config));
 
     LOG(INFO) << "Start running the calculator graph.";
-    ASSIGN_OR_RETURN(m_poller, m_graph.AddOutputStreamPoller(output_node));
+    // ASSIGN_OR_RETURN(m_poller, m_graph.AddOutputStreamPoller(output_node));
+
+    auto out_cb = [&](const mediapipe::Packet& p) {
+        absl::MutexLock lock(&out_mutex);
+        out_packets.push_back(p);
+        return absl::OkStatus();
+    };
+
+    MP_RETURN_IF_ERROR(m_graph.ObserveOutputStream(output_node, out_cb));
+
     MP_RETURN_IF_ERROR(m_graph.StartRun({}));
 
     return absl::OkStatus();
 }
 
 Landmark* parsePosePacket(const mediapipe::Packet& packet) {
-    LOG(INFO) << "parsePosePacket()\n";
     Landmark output[33];
 
     auto& landmarks = packet.Get<mediapipe::NormalizedLandmarkList>();
@@ -64,7 +72,6 @@ Landmark* parsePosePacket(const mediapipe::Packet& packet) {
 }
 
 Landmark* parseHandsPacket(const mediapipe::Packet& packet) {
-    LOG(INFO) << "parseHandsPacket()\n";
     Landmark output[42];
 
     auto& hands = packet.Get<std::vector<mediapipe::NormalizedLandmarkList>>();
@@ -109,7 +116,6 @@ Landmark* parseHandsPacket(const mediapipe::Packet& packet) {
 }
 
 Landmark* parseFacePacket(const mediapipe::Packet& packet) {
-    LOG(INFO) << "parseFacePacket()\n";
     Landmark output[478];
 
     auto& faces = packet.Get<std::vector<mediapipe::NormalizedLandmarkList>>();
@@ -134,7 +140,6 @@ Landmark* parseFacePacket(const mediapipe::Packet& packet) {
 }
 
 Landmark* MediagraphImpl::parsePacket(const mediapipe::Packet& packet) {
-    LOG(INFO) << "MediagraphImpl::parsepacket()\n";
     switch (m_graph_type) {
         case GraphType::POSE:
             return parsePosePacket(packet);
@@ -154,22 +159,44 @@ Landmark* MediagraphImpl::Process(uint8_t* data, int width, int height) {
         return nullptr;
     }
 
-    int width_step = width * mediapipe::ImageFrame::ByteDepthForFormat(mediapipe::ImageFormat::SRGB) * mediapipe::ImageFrame::NumberOfChannelsForFormat(mediapipe::ImageFormat::SRGB);
+    int width_step = width * mediapipe::ImageFrame::ByteDepthForFormat(mediapipe::ImageFormat::SRGB)
+        * mediapipe::ImageFrame::NumberOfChannelsForFormat(mediapipe::ImageFormat::SRGB);
 
-    auto input_frame_for_input = absl::make_unique<mediapipe::ImageFrame>(mediapipe::ImageFormat::SRGB, width, height, width_step, 
-                                                                (uint8*)data, mediapipe::ImageFrame::PixelDataDeleter::kNone);
+    auto input_frame_for_input = absl::make_unique<mediapipe::ImageFrame>(
+        mediapipe::ImageFormat::SRGB, width, height, width_step,
+        (uint8*)data, mediapipe::ImageFrame::PixelDataDeleter::kNone
+    );
 
     m_frame_timestamp++;
 
-    if (!m_graph.AddPacketToInputStream(kInputStream, mediapipe::Adopt(input_frame_for_input.release()).At(mediapipe::Timestamp(m_frame_timestamp))).ok()) {
-        LOG(INFO) << "Failed to add packet to input stream. Call m_graph.WaitUntilDone() to see error (or destroy Example object)";
+    mediapipe::Status run_status = m_graph.AddPacketToInputStream(
+        kInputStream,
+        mediapipe::Adopt(input_frame_for_input.release()).At(mediapipe::Timestamp(m_frame_timestamp))
+    );
+
+    if (!run_status.ok()) {
+        LOG(INFO) << "Add Packet error: [" << run_status.message() << "]" << std::endl;
         return nullptr;
     }
 
+    // mediapipe::Packet packet;
+    // if (!m_poller->Next(&packet)){
+    //     LOG(INFO) << "No packet from poller";
+    //     return nullptr;
+    // }
+
     mediapipe::Packet packet;
-    if (!m_poller->Next(&packet)){
-        LOG(INFO) << "Poller didnt give me a packet, sorry. Call m_graph.WaitUntilDone() to see error (or destroy Example object). Error probably is that models are not available under mediapipe/models or mediapipe/modules";
-        return nullptr;
+
+    {
+        absl::MutexLock lock(&out_mutex);
+
+        if (out_packets.size() == 0) {
+            LOG(INFO) << "No packets available\n";
+            return nullptr;
+        }
+
+        packet = out_packets.back();
+        out_packets.clear();
     }
 
     return parsePacket(packet);

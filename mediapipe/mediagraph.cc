@@ -4,7 +4,6 @@
 namespace mediagraph {
 
 Mediagraph* Mediagraph::Create(GraphType graph_type, const char* graph_config, const char* output_node) {
-    std::cout << "Mediagraph::Create()\n";
     MediagraphImpl* mediagraph = new MediagraphImpl();
 
     absl::Status status = mediagraph->Init(graph_type, graph_config, output_node);

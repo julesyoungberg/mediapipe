@@ -21,6 +21,7 @@
 #include <string>
 
 #include "absl/status/status.h"
+#include "absl/synchronization/mutex.h"
 #include "mediapipe/framework/calculator_framework.h"
 
 #include "mediagraph.h"
@@ -37,8 +38,10 @@ public:
     Landmark* Process(uint8_t* data, int width, int height) override;
 private:
     mediapipe::CalculatorGraph m_graph;
-    absl::StatusOr<mediapipe::OutputStreamPoller> m_poller;
+    // absl::StatusOr<mediapipe::OutputStreamPoller> m_poller;
     size_t m_frame_timestamp = 0;
+    std::vector<mediapipe::Packet> out_packets;;
+    absl::Mutex out_mutex;
 
     Landmark* parsePacket(const mediapipe::Packet& packet);
 };
