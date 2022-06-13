@@ -28,41 +28,36 @@
 
 namespace mediagraph {
 
-class MediagraphImpl : public Mediagraph {
+class DetectorImpl : public Detector {
 public:
-    MediagraphImpl(){}
-    ~MediagraphImpl();
+    DetectorImpl(){}
+    ~DetectorImpl() override;
 
-    absl::Status Init(GraphType graph_type, const char* graph, const char* output_node);
+    absl::Status Init(DetectorType graph_type, const char* graph, const char* output_node);
 
     Landmark* Process(uint8_t* data, int width, int height) override;
 private:
     mediapipe::CalculatorGraph m_graph;
-    // absl::StatusOr<mediapipe::OutputStreamPoller> m_poller;
     size_t m_frame_timestamp = 0;
-    std::vector<mediapipe::Packet> out_packets;;
+    std::vector<mediapipe::Packet> out_packets;
     absl::Mutex out_mutex;
 
     Landmark* parsePacket(const mediapipe::Packet& packet);
 };
 
-// class PoseGraph : public MediagraphImpl {
-// private:
-//     // returns 33 landmarks
-//     Landmark* parsePacket(const mediapipe::Packet& packet) override;
-// };
+class EffectImpl : public Effect {
+public:
+    EffectImpl() {}
+    ~EffectImpl() override;
 
-// class HandsGraph : public MediagraphImpl {
-// private:
-//     // returns 42 landmarks, the first 21 are for the left hand, the last 21 are for the right hand
-//     Landmark* parsePacket(const mediapipe::Packet& packet) override;
-// };
+    absl::Status Init(const char* graph, const char* output_node);
 
-// class FaceMeshGraph : public MediagraphImpl {
-// private:
-//     // returns 478 landmarks
-//     Landmark* parsePacket(const mediapipe::Packet& packet) override;
-// };
+    uint8_t* Process(uint8_t* data, int width, int height) override;
+private:
+    mediapipe::CalculatorGraph m_graph;
+    absl::StatusOr<mediapipe::OutputStreamPoller> m_poller;
+    size_t m_frame_timestamp = 0;
+};
 
 }
 

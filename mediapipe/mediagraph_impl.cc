@@ -12,7 +12,7 @@ namespace mediagraph {
 
 constexpr char kInputStream[] = "input_video";
 
-MediagraphImpl::~MediagraphImpl() {
+DetectorImpl::~DetectorImpl() {
     LOG(INFO) << "Shutting down.";
     absl::Status status = m_graph.CloseInputStream(kInputStream);
     if (status.ok()){
@@ -25,7 +25,7 @@ MediagraphImpl::~MediagraphImpl() {
     }
 }
 
-absl::Status MediagraphImpl::Init(GraphType graph_type, const char* graph, const char* output_node) {
+absl::Status DetectorImpl::Init(DetectorType graph_type, const char* graph, const char* output_node) {
     m_graph_type = graph_type;
     LOG(INFO) << "Parsing graph config " << graph;
     mediapipe::CalculatorGraphConfig config = mediapipe::ParseTextProtoOrDie<mediapipe::CalculatorGraphConfig>(graph);
@@ -34,7 +34,6 @@ absl::Status MediagraphImpl::Init(GraphType graph_type, const char* graph, const
     MP_RETURN_IF_ERROR(m_graph.Initialize(config));
 
     LOG(INFO) << "Start running the calculator graph.";
-    // ASSIGN_OR_RETURN(m_poller, m_graph.AddOutputStreamPoller(output_node));
 
     auto out_cb = [&](const mediapipe::Packet& p) {
         absl::MutexLock lock(&out_mutex);
@@ -47,28 +46,6 @@ absl::Status MediagraphImpl::Init(GraphType graph_type, const char* graph, const
     MP_RETURN_IF_ERROR(m_graph.StartRun({}));
 
     return absl::OkStatus();
-}
-
-Landmark* parsePosePacket(const mediapipe::Packet& packet) {
-    Landmark output[33];
-
-    auto& landmarks = packet.Get<mediapipe::NormalizedLandmarkList>();
-
-    assert(landmarks.landmark_size() == 33);
-      
-    for (int idx = 0; idx < 33; ++idx) { 
-        const mediapipe::NormalizedLandmark& landmark = landmarks.landmark(idx);
-    
-        output[idx] = {
-	        .x = landmark.x(),
-            .y = landmark.y(),
-            .z = landmark.z(),
-            .visibility = landmark.visibility(),
-            .presence = landmark.presence(),
-        };
-    }
-
-    return output;
 }
 
 Landmark* parseHandsPacket(const mediapipe::Packet& packet) {
@@ -139,13 +116,35 @@ Landmark* parseFacePacket(const mediapipe::Packet& packet) {
     return output;
 }
 
-Landmark* MediagraphImpl::parsePacket(const mediapipe::Packet& packet) {
+Landmark* parsePosePacket(const mediapipe::Packet& packet) {
+    Landmark output[33];
+
+    auto& landmarks = packet.Get<mediapipe::NormalizedLandmarkList>();
+
+    assert(landmarks.landmark_size() == 33);
+      
+    for (int idx = 0; idx < 33; ++idx) { 
+        const mediapipe::NormalizedLandmark& landmark = landmarks.landmark(idx);
+    
+        output[idx] = {
+	        .x = landmark.x(),
+            .y = landmark.y(),
+            .z = landmark.z(),
+            .visibility = landmark.visibility(),
+            .presence = landmark.presence(),
+        };
+    }
+
+    return output;
+}
+
+Landmark* DetectorImpl::parsePacket(const mediapipe::Packet& packet) {
     switch (m_graph_type) {
-        case GraphType::POSE:
+        case DetectorType::POSE:
             return parsePosePacket(packet);
-        case GraphType::HANDS:
+        case DetectorType::HANDS:
             return parseHandsPacket(packet);
-        case GraphType::FACE:
+        case DetectorType::FACE:
             return parseFacePacket(packet);
         default:
             LOG(INFO) << "NO MATCH\n";
@@ -153,7 +152,7 @@ Landmark* MediagraphImpl::parsePacket(const mediapipe::Packet& packet) {
     }
 }
 
-Landmark* MediagraphImpl::Process(uint8_t* data, int width, int height) {
+Landmark* DetectorImpl::Process(uint8_t* data, int width, int height) {
     if (data == nullptr){
         LOG(INFO) << __FUNCTION__ << " input data is nullptr!";
         return nullptr;
@@ -179,12 +178,6 @@ Landmark* MediagraphImpl::Process(uint8_t* data, int width, int height) {
         return nullptr;
     }
 
-    // mediapipe::Packet packet;
-    // if (!m_poller->Next(&packet)){
-    //     LOG(INFO) << "No packet from poller";
-    //     return nullptr;
-    // }
-
     mediapipe::Packet packet;
 
     {
@@ -200,6 +193,74 @@ Landmark* MediagraphImpl::Process(uint8_t* data, int width, int height) {
     }
 
     return parsePacket(packet);
+}
+
+EffectImpl::~EffectImpl() {
+    LOG(INFO) << "Shutting down.";
+    absl::Status status = m_graph.CloseInputStream(kInputStream);
+    if (status.ok()){
+    	absl::Status status1 = m_graph.WaitUntilDone();
+        if (!status1.ok()) {
+            LOG(INFO) << "Error in WaitUntilDone(): " << status1.ToString();
+        }
+    } else {
+        LOG(INFO) << "Error in CloseInputStream(): " << status.ToString();
+    }
+}
+
+absl::Status EffectImpl::Init(const char* graph, const char* output_node) {
+    LOG(INFO) << "Parsing graph config " << graph;
+    mediapipe::CalculatorGraphConfig config = mediapipe::ParseTextProtoOrDie<mediapipe::CalculatorGraphConfig>(graph);
+
+    LOG(INFO) << "Initialize the calculator graph.";
+    MP_RETURN_IF_ERROR(m_graph.Initialize(config));
+
+    LOG(INFO) << "Start running the calculator graph.";
+    ASSIGN_OR_RETURN(m_poller, m_graph.AddOutputStreamPoller(output_node));
+    MP_RETURN_IF_ERROR(m_graph.StartRun({}));
+
+    return absl::OkStatus();
+}
+
+uint8_t* EffectImpl::Process(uint8_t* data, int width, int height) {
+    if (data == nullptr){
+        LOG(INFO) << __FUNCTION__ << " input data is nullptr!";
+        return nullptr;
+    }
+
+    int width_step = width * mediapipe::ImageFrame::ByteDepthForFormat(mediapipe::ImageFormat::SRGB)
+        * mediapipe::ImageFrame::NumberOfChannelsForFormat(mediapipe::ImageFormat::SRGB);
+
+    auto input_frame_for_input = absl::make_unique<mediapipe::ImageFrame>(
+        mediapipe::ImageFormat::SRGB, width, height, width_step,
+        (uint8*)data, mediapipe::ImageFrame::PixelDataDeleter::kNone
+    );
+
+    m_frame_timestamp++;
+
+    mediapipe::Status run_status = m_graph.AddPacketToInputStream(
+        kInputStream,
+        mediapipe::Adopt(input_frame_for_input.release()).At(mediapipe::Timestamp(m_frame_timestamp))
+    );
+
+    if (!run_status.ok()) {
+        LOG(INFO) << "Add Packet error: [" << run_status.message() << "]" << std::endl;
+        return nullptr;
+    }
+
+    mediapipe::Packet packet;
+    if (!m_poller->Next(&packet)){
+        LOG(INFO) << "No packet from poller";
+        return nullptr;
+    }
+
+    const mediapipe::ImageFrame &output_frame = packet.Get<mediapipe::ImageFrame>();
+    size_t output_bytes = output_frame.PixelDataSizeStoredContiguously();
+
+    // This could be optimized to not copy but return output_frame.PixelData()
+    uint8_t* out_data = new uint8_t[output_bytes];
+    output_frame.CopyToBuffer((uint8*)out_data, output_bytes);
+    return out_data; 
 }
 
 }

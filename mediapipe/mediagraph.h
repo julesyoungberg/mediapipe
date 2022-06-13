@@ -31,19 +31,34 @@ struct Landmark {
   float presence;
 };
 
-enum GraphType {
+enum DetectorType {
     POSE,
     HANDS,
     FACE,
 };
 
-class Mediagraph {
+class Detector {
 public:
-    GraphType m_graph_type;
+    DetectorType m_graph_type;
     // Create and initialize using provided graph
     // Returns nullptr if initialization failed
-    static Mediagraph* Create(GraphType graph_type, const char* graph_config, const char* output_node);
-    virtual ~Mediagraph() {}
+    static Detector* Create(DetectorType t, const char* graph_config, const char* output_node);
+    virtual ~Detector();
+
+    // Processes one frame and returns immediately.
+    // If a result is available it is returned.
+    // Input data is expected to be ImageFormat::SRGB (24bits)
+    // Returns nullptr if failed to run graph
+    virtual Landmark* Process(uint8_t* data, int width, int height);
+};
+
+class Effect {
+public:
+    // Create and initialize using provided graph
+    // Returns nullptr if initialization failed
+    static Effect* Create(const char* graph_config, const char* output_node);
+
+    virtual ~Effect();
 
     // Processes one frame and blocks until finished
     // Input data is expected to be ImageFormat::SRGB (24bits)
@@ -52,7 +67,7 @@ public:
     // and whose format is ImageFormat::SRGB
     // ImageFormat::SRGB is QImage::Format_RGB888 in Qt
     // Function does not take ownership of input data
-    virtual Landmark* Process(uint8_t* data, int width, int height);
+    virtual uint8_t* Process(uint8_t* data, int width, int height);
 };
 
 }
