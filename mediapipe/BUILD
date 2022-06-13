@@ -145,28 +145,6 @@ exports_files(
 )
 
 cc_library(
-    name = "cpuhost",
-    srcs = [
-	    "cpuhost.cc",
-    ],
-    alwayslink = 1,
-    visibility = ["//visibility:public"],
-    deps = [
-	    "//mediapipe/framework:calculator_framework",
-        "//mediapipe/framework/formats:image_frame",
-        "//mediapipe/framework/formats:image_frame_opencv",
-        "//mediapipe/framework/port:file_helpers",
-        "//mediapipe/framework/port:parse_text_proto",
-        "//mediapipe/framework/port:status",
-        
-        "//mediapipe/graphs/pose_tracking:pose_tracking_cpu_deps",
-        "//mediapipe/graphs/hand_tracking:desktop_tflite_calculators",
-        "//mediapipe/graphs/face_mesh:desktop_calculators",
-        "//mediapipe/graphs/face_mesh:desktop_live_calculators",
-    ],
-)
-
-cc_library(
     name = "mediagraph_lib",
     srcs = [
 	    "mediagraph.cc",
