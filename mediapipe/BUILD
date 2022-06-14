@@ -167,7 +167,7 @@ cc_library(
         "@com_google_absl//absl/flags:parse",
 
         # Selfie segmentation
-        # "//mediapipe/graphs/selfie_segmentation:selfie_segmentation_cpu_deps",
+        "//mediapipe/graphs/selfie_segmentation:selfie_segmentation_cpu_deps",
 
         # Hand tracking
         "//mediapipe/calculators/util:annotation_overlay_calculator",
