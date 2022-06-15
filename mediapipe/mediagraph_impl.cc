@@ -27,8 +27,9 @@ DetectorImpl::~DetectorImpl() {
     }
 }
 
-absl::Status DetectorImpl::Init(const char* graph, const std::vector<Output> outputs_) {
-    outputs = outputs_;
+absl::Status DetectorImpl::Init(const char* graph, const Output* outputs_, uint8_t num_outputs_) {
+    num_outputs = num_outputs_;
+    outputs = std::vector<Output>(outputs_, outputs_ + num_outputs);
     LOG(INFO) << "Parsing graph config " << graph;
     mediapipe::CalculatorGraphConfig config = mediapipe::ParseTextProtoOrDie<mediapipe::CalculatorGraphConfig>(graph);
 
@@ -37,7 +38,6 @@ absl::Status DetectorImpl::Init(const char* graph, const std::vector<Output> out
 
     LOG(INFO) << "Start running the calculator graph.";
 
-    num_outputs = outputs.size();
     out_packets = std::vector<std::vector<mediapipe::Packet>>(num_outputs);
     out_mutexes = std::vector<absl::Mutex>(num_outputs);
 

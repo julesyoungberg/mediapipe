@@ -56,7 +56,7 @@ class Detector {
 public:
     // Create and initialize using provided graph
     // Returns nullptr if initialization failed
-    static Detector* Create(const char* graph_config, const std::vector<Output> outputs);
+    static Detector* Create(const char* graph_config, const Output* outputs, uint8_t num_outputs);
     virtual ~Detector();
 
     // Processes one frame and returns immediately.

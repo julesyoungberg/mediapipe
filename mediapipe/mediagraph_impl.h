@@ -33,7 +33,7 @@ public:
     DetectorImpl(){}
     ~DetectorImpl() override;
 
-    absl::Status Init(const char* graph, const std::vector<Output> outputs_);
+    absl::Status Init(const char* graph, const Output* outputs_, uint8_t num_outputs_);
 
     FeatureList* Process(uint8_t* data, int width, int height) override;
 private:

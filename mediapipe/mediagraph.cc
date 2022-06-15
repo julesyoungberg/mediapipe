@@ -3,10 +3,10 @@
 
 namespace mediagraph {
 
-Detector* Detector::Create(const char* graph_config, const std::vector<Output> outputs) {
+Detector* Detector::Create(const char* graph_config, const Output* outputs, uint8_t num_outputs) {
     DetectorImpl* mediagraph = new DetectorImpl();
 
-    absl::Status status = mediagraph->Init(graph_config, outputs);
+    absl::Status status = mediagraph->Init(graph_config, outputs, num_outputs);
     if (status.ok()) {
         return mediagraph;
     } else {
