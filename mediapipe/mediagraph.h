@@ -19,6 +19,7 @@
 
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 namespace mediagraph {
 
@@ -31,25 +32,38 @@ struct Landmark {
   float presence;
 };
 
-enum DetectorType {
+enum FeatureType {
     POSE,
     HANDS,
     FACE,
 };
 
+struct Output {
+    FeatureType type;
+    char* name;
+};
+
+struct Feature {
+    Landmark* data;
+};
+
+struct FeatureList {
+    uint8_t num_features;
+    Feature* features;
+};
+
 class Detector {
 public:
-    DetectorType m_graph_type;
     // Create and initialize using provided graph
     // Returns nullptr if initialization failed
-    static Detector* Create(DetectorType t, const char* graph_config, const char* output_node);
+    static Detector* Create(const char* graph_config, const std::vector<Output> outputs);
     virtual ~Detector();
 
     // Processes one frame and returns immediately.
     // If a result is available it is returned.
     // Input data is expected to be ImageFormat::SRGB (24bits)
-    // Returns nullptr if failed to run graph
-    virtual Landmark* Process(uint8_t* data, int width, int height);
+    // Returns an empty vector if nothing is detected.
+    virtual FeatureList* Process(uint8_t* data, int width, int height);
 };
 
 class Effect {

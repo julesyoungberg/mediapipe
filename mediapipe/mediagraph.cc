@@ -3,10 +3,10 @@
 
 namespace mediagraph {
 
-Detector* Detector::Create(DetectorType t, const char* graph_config, const char* output_node) {
+Detector* Detector::Create(const char* graph_config, const std::vector<Output> outputs) {
     DetectorImpl* mediagraph = new DetectorImpl();
 
-    absl::Status status = mediagraph->Init(t, graph_config, output_node);
+    absl::Status status = mediagraph->Init(graph_config, outputs);
     if (status.ok()) {
         return mediagraph;
     } else {
@@ -20,7 +20,7 @@ Detector::~Detector() {
     dynamic_cast<DetectorImpl*>(this)->~DetectorImpl();
 }
 
-Landmark* Detector::Process(uint8_t* data, int width, int height) {
+FeatureList* Detector::Process(uint8_t* data, int width, int height) {
     return dynamic_cast<DetectorImpl*>(this)->Process(data, width, height);
 }
 

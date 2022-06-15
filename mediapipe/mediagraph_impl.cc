@@ -1,3 +1,5 @@
+#include <vector>
+
 #include "mediagraph_impl.h"
 // #include "absl/flags/flag.h"
 // #include "absl/flags/parse.h"
@@ -25,8 +27,8 @@ DetectorImpl::~DetectorImpl() {
     }
 }
 
-absl::Status DetectorImpl::Init(DetectorType graph_type, const char* graph, const char* output_node) {
-    m_graph_type = graph_type;
+absl::Status DetectorImpl::Init(const char* graph, const std::vector<Output> outputs_) {
+    outputs = outputs_;
     LOG(INFO) << "Parsing graph config " << graph;
     mediapipe::CalculatorGraphConfig config = mediapipe::ParseTextProtoOrDie<mediapipe::CalculatorGraphConfig>(graph);
 
@@ -35,20 +37,26 @@ absl::Status DetectorImpl::Init(DetectorType graph_type, const char* graph, cons
 
     LOG(INFO) << "Start running the calculator graph.";
 
-    auto out_cb = [&](const mediapipe::Packet& p) {
-        absl::MutexLock lock(&out_mutex);
-        out_packets.push_back(p);
-        return absl::OkStatus();
-    };
+    num_outputs = outputs.size();
+    out_packets = std::vector<std::vector<mediapipe::Packet>>(num_outputs);
+    out_mutexes = std::vector<absl::Mutex>(num_outputs);
 
-    MP_RETURN_IF_ERROR(m_graph.ObserveOutputStream(output_node, out_cb));
+    for (uint i = 0; i < num_outputs; ++i) {
+        auto out_cb = [&](const mediapipe::Packet& p) {
+            absl::MutexLock lock(&out_mutexes[i]);
+            out_packets[i].push_back(p);
+            return absl::OkStatus();
+        };
+
+        MP_RETURN_IF_ERROR(m_graph.ObserveOutputStream(outputs[i].name, out_cb));
+    }
 
     MP_RETURN_IF_ERROR(m_graph.StartRun({}));
 
     return absl::OkStatus();
 }
 
-Landmark* parseHandsPacket(const mediapipe::Packet& packet) {
+FeatureList parseHandsPacket(const mediapipe::Packet& packet) {
     Landmark output[42];
 
     auto& hands = packet.Get<std::vector<mediapipe::NormalizedLandmarkList>>();
@@ -89,10 +97,12 @@ Landmark* parseHandsPacket(const mediapipe::Packet& packet) {
         }
     }
 
-    return output;
+    Feature f = { data: output };
+    FeatureList l { num_features: 1, features: &f };
+    return l;
 }
 
-Landmark* parseFacePacket(const mediapipe::Packet& packet) {
+FeatureList parseFacePacket(const mediapipe::Packet& packet) {
     Landmark output[478];
 
     auto& faces = packet.Get<std::vector<mediapipe::NormalizedLandmarkList>>();
@@ -113,10 +123,12 @@ Landmark* parseFacePacket(const mediapipe::Packet& packet) {
         }
     }
 
-    return output;
+    Feature f = { data: output };
+    FeatureList l { num_features: 1, features: &f };
+    return l;
 }
 
-Landmark* parsePosePacket(const mediapipe::Packet& packet) {
+FeatureList parsePosePacket(const mediapipe::Packet& packet) {
     Landmark output[33];
 
     auto& landmarks = packet.Get<mediapipe::NormalizedLandmarkList>();
@@ -135,24 +147,26 @@ Landmark* parsePosePacket(const mediapipe::Packet& packet) {
         };
     }
 
-    return output;
+    Feature f = { data: output };
+    FeatureList l { num_features: 1, features: &f };
+    return l;
 }
 
-Landmark* DetectorImpl::parsePacket(const mediapipe::Packet& packet) {
-    switch (m_graph_type) {
-        case DetectorType::POSE:
+FeatureList parsePacket(const mediapipe::Packet& packet, const FeatureType type) {
+    switch (type) {
+        case FeatureType::POSE:
             return parsePosePacket(packet);
-        case DetectorType::HANDS:
+        case FeatureType::HANDS:
             return parseHandsPacket(packet);
-        case DetectorType::FACE:
+        case FeatureType::FACE:
             return parseFacePacket(packet);
         default:
             LOG(INFO) << "NO MATCH\n";
-            return nullptr;
+            return { num_features: 1, features: nullptr };
     }
 }
 
-Landmark* DetectorImpl::Process(uint8_t* data, int width, int height) {
+FeatureList* DetectorImpl::Process(uint8_t* data, int width, int height) {
     if (data == nullptr){
         LOG(INFO) << __FUNCTION__ << " input data is nullptr!";
         return nullptr;
@@ -178,21 +192,24 @@ Landmark* DetectorImpl::Process(uint8_t* data, int width, int height) {
         return nullptr;
     }
 
+    FeatureList results[num_outputs];
     mediapipe::Packet packet;
 
-    {
-        absl::MutexLock lock(&out_mutex);
+    for (uint i = 0; i < num_outputs; ++i) {
+        absl::MutexLock lock(&out_mutexes[i]);
 
-        if (out_packets.size() == 0) {
-            LOG(INFO) << "No packets available\n";
-            return nullptr;
+        if (out_packets[i].size() == 0) {
+            results[i] = { num_features: 0, features: nullptr };
+            continue;
         }
 
-        packet = out_packets.back();
-        out_packets.clear();
-    }
+        packet = out_packets[i].back();
+        out_packets[i].clear();
 
-    return parsePacket(packet);
+        results[i] = parsePacket(packet, outputs[i].type);
+    }
+    
+    return results;
 }
 
 EffectImpl::~EffectImpl() {

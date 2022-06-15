@@ -33,16 +33,16 @@ public:
     DetectorImpl(){}
     ~DetectorImpl() override;
 
-    absl::Status Init(DetectorType graph_type, const char* graph, const char* output_node);
+    absl::Status Init(const char* graph, const std::vector<Output> outputs_);
 
-    Landmark* Process(uint8_t* data, int width, int height) override;
+    FeatureList* Process(uint8_t* data, int width, int height) override;
 private:
     mediapipe::CalculatorGraph m_graph;
     size_t m_frame_timestamp = 0;
-    std::vector<mediapipe::Packet> out_packets;
-    absl::Mutex out_mutex;
-
-    Landmark* parsePacket(const mediapipe::Packet& packet);
+    std::vector<Output> outputs;
+    std::vector<std::vector<mediapipe::Packet>> out_packets;
+    std::vector<absl::Mutex> out_mutexes;
+    uint8_t num_outputs;
 };
 
 class EffectImpl : public Effect {
