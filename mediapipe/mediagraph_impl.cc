@@ -60,18 +60,17 @@ std::vector<Landmark> parseHandsPacket(const mediapipe::Packet& packet, uint8_t*
     constexpr int num_landmarks = 21;
     auto& hands = packet.Get<std::vector<mediapipe::NormalizedLandmarkList>>();
 
-    std::vector<Landmark> output(0);
+    std::vector<Landmark> output(hands.size() * num_landmarks);
 
-    for (const auto& hand : hands) {
+    for (int i = 0; i < hands.size(); ++i) {
+        const auto& hand = hands[i];
         assert(hand.landmark_size() == num_landmarks);
-
-        auto prev_size = output.size();
-        output.resize(prev_size + num_landmarks);
+        const auto prefix = i * num_landmarks;
 
         for (int idx = 0; idx < num_landmarks; ++idx) {
             const mediapipe::NormalizedLandmark& landmark = hand.landmark(idx);
 
-            output[prev_size + idx] = {
+            output[prefix + idx] = {
                 .x = landmark.x(),
                 .y = landmark.y(),
                 .z = landmark.z(),
@@ -90,16 +89,16 @@ std::vector<Landmark> parseFacePacket(const mediapipe::Packet& packet, uint8_t* 
     constexpr int num_landmarks = 478;
     auto& faces = packet.Get<std::vector<mediapipe::NormalizedLandmarkList>>();
 
-    std::vector<Landmark> output(0);
+    std::vector<Landmark> output(faces.size() * num_landmarks);
 
-    for (const auto& face : faces) {
-        auto size = output.size();
-        output.resize(size + num_landmarks);
+    for (int i = 0; i < faces.size(); ++i) {
+        const auto& face = faces[i];
+        const auto prefix = i * num_landmarks;
         // 478 landmarks with irises, 468 without
         for (int idx = 0; idx < face.landmark_size(); ++idx) {
             const mediapipe::NormalizedLandmark& landmark = face.landmark(idx);
 
-            output[size + idx] = {
+            output[prefix + idx] = {
                 .x = landmark.x(),
                 .y = landmark.y(),
                 .z = landmark.z(),
