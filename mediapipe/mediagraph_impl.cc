@@ -205,18 +205,23 @@ Landmark* DetectorImpl::Process(uint8_t* data, int width, int height, uint8_t* n
     mediapipe::Packet packet;
 
     for (uint i = 0; i < num_outputs_; ++i) {
-        absl::MutexLock lock(&out_mutexes_[i]);
+        {
+            absl::MutexLock lock(&out_mutexes_[i]);
 
-        if (out_packets_[i].size() == 0) {
-            num_features[i] = 0;
-            continue;
+            if (out_packets_[i].size() == 0) {
+                num_features[i] = 0;
+                continue;
+            }
+
+            packet = out_packets_[i].back();
+            out_packets_[i].clear();
         }
 
-        packet = out_packets_[i].back();
-        out_packets_[i].clear();
-
         auto result = parsePacket(packet, outputs_[i].type, num_features + i);
-        landmarks.insert(landmarks.end(), result.begin(), result.end());
+
+        if (result.size() > 0) {
+            landmarks.insert(landmarks.end(), result.begin(), result.end());
+        }
     }
     
     return landmarks.data();
