@@ -57,25 +57,21 @@ absl::Status DetectorImpl::Init(const char* graph, const Output* outputs, uint8_
 }
 
 std::vector<Landmark> parseHandsPacket(const mediapipe::Packet& packet, uint8_t* num_features) {
+    constexpr int num_landmarks = 21;
     auto& hands = packet.Get<std::vector<mediapipe::NormalizedLandmarkList>>();
 
-    // @todo remove
-    if (hands.size() < 2) {
-        *num_features = 0;
-        return std::vector<Landmark>();
-    }
+    std::vector<Landmark> output(0);
 
-    std::vector<Landmark> output(42);
+    for (const auto& hand : hands) {
+        assert(hand.landmark_size() == num_landmarks);
 
-    // left
-    if (hands.size() > 0) {
-        const mediapipe::NormalizedLandmarkList &left_hand = hands.at(0);
-        assert(left_hand.landmark_size() == 21);
+        auto prev_size = output.size();
+        output.resize(prev_size + num_landmarks);
 
-        for (int idx = 0; idx < 21; ++idx) {
-            const mediapipe::NormalizedLandmark& landmark = left_hand.landmark(idx);
+        for (int idx = 0; idx < num_landmarks; ++idx) {
+            const mediapipe::NormalizedLandmark& landmark = hand.landmark(idx);
 
-            output[idx] = {
+            output[prev_size + idx] = {
                 .x = landmark.x(),
                 .y = landmark.y(),
                 .z = landmark.z(),
@@ -85,65 +81,48 @@ std::vector<Landmark> parseHandsPacket(const mediapipe::Packet& packet, uint8_t*
         }
     }
 
-    // right
-    if (hands.size() > 1) {
-        const mediapipe::NormalizedLandmarkList &right_hand = hands.at(1);
-        assert(right_hand.landmark_size() == 21);
-
-        for (int idx = 0; idx < 21; ++idx) {
-            const mediapipe::NormalizedLandmark& landmark = right_hand.landmark(idx);
-
-            output[idx + 21] = {
-                .x = landmark.x(),
-                .y = landmark.y(),
-                .z = landmark.z(),
-                .visibility = landmark.visibility(),
-                .presence = landmark.presence(),
-            };
-        }
-    }
-
-    *num_features = 1;
+    *num_features = hands.size();
 
     return output;
 }
 
 std::vector<Landmark> parseFacePacket(const mediapipe::Packet& packet, uint8_t* num_features) {
+    constexpr int num_landmarks = 478;
     auto& faces = packet.Get<std::vector<mediapipe::NormalizedLandmarkList>>();
 
-    if (faces.size() < 1) {
-        *num_features = 0;
-        return std::vector<Landmark>();
+    std::vector<Landmark> output(0);
+
+    for (const auto& face : faces) {
+        auto size = output.size();
+        output.resize(size + num_landmarks);
+        // 478 landmarks with irises, 468 without
+        for (int idx = 0; idx < face.landmark_size(); ++idx) {
+            const mediapipe::NormalizedLandmark& landmark = face.landmark(idx);
+
+            output[size + idx] = {
+                .x = landmark.x(),
+                .y = landmark.y(),
+                .z = landmark.z(),
+                .visibility = landmark.visibility(),
+                .presence = landmark.presence(),
+            };
+        }
     }
 
-    std::vector<Landmark> output(478);
-    const mediapipe::NormalizedLandmarkList &face = faces.at(0);
-    // 478 landmarks with irises, 468 without
-    for (int idx = 0; idx < face.landmark_size(); ++idx) {
-        const mediapipe::NormalizedLandmark& landmark = face.landmark(idx);
-
-        output[idx] = {
-            .x = landmark.x(),
-            .y = landmark.y(),
-            .z = landmark.z(),
-            .visibility = landmark.visibility(),
-            .presence = landmark.presence(),
-        };
-    }
-
-    *num_features = 1;
+    *num_features = faces.size();
 
     return output;
 }
 
 std::vector<Landmark> parsePosePacket(const mediapipe::Packet& packet, uint8_t* num_features) {
+    constexpr int num_landmarks = 33;
     auto& landmarks = packet.Get<mediapipe::NormalizedLandmarkList>();
 
-    assert(landmarks.landmark_size() == 33);
+    assert(landmarks.landmark_size() == num_landmarks);
 
-    std::vector<Landmark> output(33);
+    std::vector<Landmark> output(num_landmarks);
       
-    for (int idx = 0; idx < 33; ++idx) { 
+    for (int idx = 0; idx < num_landmarks; ++idx) { 
         const mediapipe::NormalizedLandmark& landmark = landmarks.landmark(idx);
     
         output[idx] = {
