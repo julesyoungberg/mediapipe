@@ -33,16 +33,16 @@ public:
     DetectorImpl(){}
     ~DetectorImpl() override;
 
-    absl::Status Init(const char* graph, const Output* outputs_, uint8_t num_outputs_);
+    absl::Status Init(const char* graph, const Output* outputs, uint8_t num_outputs);
 
-    FeatureList* Process(uint8_t* data, int width, int height) override;
+    Landmark* Process(uint8_t* data, int width, int height, uint8_t* num_features) override;
 private:
-    mediapipe::CalculatorGraph m_graph;
-    size_t m_frame_timestamp = 0;
-    std::vector<Output> outputs;
-    std::vector<std::vector<mediapipe::Packet>> out_packets;
-    std::vector<absl::Mutex> out_mutexes;
-    uint8_t num_outputs;
+    mediapipe::CalculatorGraph graph_;
+    size_t frame_timestamp_ = 0;
+    std::vector<Output> outputs_;
+    std::vector<std::vector<mediapipe::Packet>> out_packets_;
+    std::vector<absl::Mutex> out_mutexes_;
+    uint8_t num_outputs_;
 };
 
 class EffectImpl : public Effect {
@@ -54,9 +54,9 @@ public:
 
     uint8_t* Process(uint8_t* data, int width, int height) override;
 private:
-    mediapipe::CalculatorGraph m_graph;
-    absl::StatusOr<mediapipe::OutputStreamPoller> m_poller;
-    size_t m_frame_timestamp = 0;
+    mediapipe::CalculatorGraph graph_;
+    absl::StatusOr<mediapipe::OutputStreamPoller> poller_;
+    size_t frame_timestamp_ = 0;
 };
 
 }

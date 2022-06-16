@@ -43,15 +43,6 @@ struct Output {
     char* name;
 };
 
-struct Feature {
-    Landmark* data;
-};
-
-struct FeatureList {
-    uint8_t num_features;
-    Feature* features;
-};
-
 class Detector {
 public:
     // Create and initialize using provided graph
@@ -63,7 +54,7 @@ public:
     // If a result is available it is returned.
     // Input data is expected to be ImageFormat::SRGB (24bits)
     // Returns an empty vector if nothing is detected.
-    virtual FeatureList* Process(uint8_t* data, int width, int height);
+    virtual Landmark* Process(uint8_t* data, int width, int height, uint8_t* num_features);
 };
 
 class Effect {

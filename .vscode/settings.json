@@ -102,6 +102,7 @@
     "shared_mutex": "cpp",
     "span": "cpp",
     "stop_token": "cpp",
-    "valarray": "cpp"
+    "valarray": "cpp",
+    "*.ipp": "cpp"
   }
 }
