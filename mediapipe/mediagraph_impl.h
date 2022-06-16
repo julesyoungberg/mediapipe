@@ -18,7 +18,9 @@
 #define MEDIAGRAPH_IMPL
 
 #include <cstdlib>
+#include <deque>
 #include <string>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/synchronization/mutex.h"
@@ -40,7 +42,7 @@ private:
     mediapipe::CalculatorGraph graph_;
     size_t frame_timestamp_ = 0;
     std::vector<Output> outputs_;
-    std::vector<std::vector<mediapipe::Packet>> out_packets_;
+    std::vector<std::deque<mediapipe::Packet>> out_packets_;
     std::vector<absl::Mutex> out_mutexes_;
     uint8_t num_outputs_;
 };
