@@ -141,14 +141,43 @@ std::vector<Landmark> parsePosePacket(const mediapipe::Packet& packet, uint8_t* 
     return output;
 }
 
+std::vector<Landmark> parsePosesPacket(const mediapipe::Packet& packet, uint8_t* num_features) {
+    constexpr int num_landmarks = 33;
+    auto& landmarks_list = packet.Get<std::vector<mediapipe::NormalizedLandmarkList>>();
+
+    std::vector<Landmark> output(landmarks_list.size() * num_landmarks);
+
+    for (int i = 0; i < output.size(); ++i) {
+        const auto& landmarks = landmarks_list[i];
+
+        for (int idx = 0; idx < num_landmarks; ++idx) {
+            const mediapipe::NormalizedLandmark& landmark = landmarks.landmark(idx);
+    
+            output[i * num_landmarks + idx] = {
+                .x = landmark.x(),
+                .y = landmark.y(),
+                .z = landmark.z(),
+                .visibility = landmark.visibility(),
+                .presence = landmark.presence(),
+            };
+        }
+    }
+
+    *num_features = landmarks_list.size();
+
+    return output;
+}
+
 std::vector<Landmark> parsePacket(const mediapipe::Packet& packet, const FeatureType type, uint8_t* num_features) {
     switch (type) {
-        case FeatureType::POSE:
-            return parsePosePacket(packet, num_features);
-        case FeatureType::HANDS:
-            return parseHandsPacket(packet, num_features);
         case FeatureType::FACE:
             return parseFacePacket(packet, num_features);
+        case FeatureType::HANDS:
+            return parseHandsPacket(packet, num_features);
+        case FeatureType::POSE:
+            return parsePosePacket(packet, num_features);
+        case FeatureType::POSES:
+            return parsePosesPacket(packet, num_features);
         default:
             LOG(INFO) << "NO MATCH\n";
             *num_features = 0;

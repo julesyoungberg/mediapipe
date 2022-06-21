@@ -186,7 +186,7 @@ cc_library(
         # "//mediapipe/graphs/hair_segmentation:desktop_calculators",
 
         # Holistic tracking
-        # "//mediapipe/graphs/holistic_tracking:holistic_tracking_cpu_graph_deps",
+        "//mediapipe/graphs/holistic_tracking:holistic_tracking_cpu_graph_deps",
 
         # Iris tracking
         # "//mediapipe/graphs/iris_tracking:iris_tracking_cpu_deps",
