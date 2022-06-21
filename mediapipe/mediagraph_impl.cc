@@ -59,6 +59,67 @@ absl::Status DetectorImpl::Init(const char* graph, const Output* outputs, uint8_
     return absl::OkStatus();
 }
 
+void copyLandmarks(
+    const mediapipe::NormalizedLandmarkList& landmarks,
+    std::vector<Landmark>& output,
+    const int start_index
+) {
+    for (int idx = 0; idx < landmarks.landmark_size(); ++idx) {
+        const mediapipe::NormalizedLandmark& landmark = landmarks.landmark(idx);
+
+        output[start_index + idx] = {
+            .x = landmark.x(),
+            .y = landmark.y(),
+            .z = landmark.z(),
+            .visibility = landmark.visibility(),
+            .presence = landmark.presence(),
+        };
+    }
+}
+
+std::vector<Landmark> parseFacePacket(const mediapipe::Packet& packet, uint8_t* num_features) {
+    constexpr int num_landmarks = 478;
+    auto& face = packet.Get<mediapipe::NormalizedLandmarkList>();
+
+    std::vector<Landmark> output(num_landmarks);
+
+    copyLandmarks(face, output, 0);
+
+    *num_features = 1;
+
+    return output;
+}
+
+std::vector<Landmark> parseFacesPacket(const mediapipe::Packet& packet, uint8_t* num_features) {
+    constexpr int num_landmarks = 478;
+    auto& faces = packet.Get<std::vector<mediapipe::NormalizedLandmarkList>>();
+
+    std::vector<Landmark> output(faces.size() * num_landmarks);
+
+    for (int i = 0; i < faces.size(); ++i) {
+        const auto& face = faces[i];
+        const auto prefix = i * num_landmarks;
+        copyLandmarks(face, output, prefix);
+    }
+
+    *num_features = faces.size();
+
+    return output;
+}
+
+std::vector<Landmark> parseHandPacket(const mediapipe::Packet& packet, uint8_t* num_features) {
+    constexpr int num_landmarks = 21;
+    auto& hand = packet.Get<mediapipe::NormalizedLandmarkList>();
+
+    std::vector<Landmark> output(num_landmarks);
+
+    copyLandmarks(hand, output, 0);
+
+    *num_features = 1;
+
+    return output;
+}
+
 std::vector<Landmark> parseHandsPacket(const mediapipe::Packet& packet, uint8_t* num_features) {
     constexpr int num_landmarks = 21;
     auto& hands = packet.Get<std::vector<mediapipe::NormalizedLandmarkList>>();
@@ -69,49 +130,10 @@ std::vector<Landmark> parseHandsPacket(const mediapipe::Packet& packet, uint8_t*
         const auto& hand = hands[i];
         assert(hand.landmark_size() == num_landmarks);
         const auto prefix = i * num_landmarks;
-
-        for (int idx = 0; idx < num_landmarks; ++idx) {
-            const mediapipe::NormalizedLandmark& landmark = hand.landmark(idx);
-
-            output[prefix + idx] = {
-                .x = landmark.x(),
-                .y = landmark.y(),
-                .z = landmark.z(),
-                .visibility = landmark.visibility(),
-                .presence = landmark.presence(),
-            };
-        }
+        copyLandmarks(hand, output, prefix);
     }
 
     *num_features = hands.size();
-
-    return output;
-}
-
-std::vector<Landmark> parseFacePacket(const mediapipe::Packet& packet, uint8_t* num_features) {
-    constexpr int num_landmarks = 478;
-    auto& faces = packet.Get<std::vector<mediapipe::NormalizedLandmarkList>>();
-
-    std::vector<Landmark> output(faces.size() * num_landmarks);
-
-    for (int i = 0; i < faces.size(); ++i) {
-        const auto& face = faces[i];
-        const auto prefix = i * num_landmarks;
-        // 478 landmarks with irises, 468 without
-        for (int idx = 0; idx < face.landmark_size(); ++idx) {
-            const mediapipe::NormalizedLandmark& landmark = face.landmark(idx);
-
-            output[prefix + idx] = {
-                .x = landmark.x(),
-                .y = landmark.y(),
-                .z = landmark.z(),
-                .visibility = landmark.visibility(),
-                .presence = landmark.presence(),
-            };
-        }
-    }
-
-    *num_features = faces.size();
 
     return output;
 }
@@ -123,18 +145,8 @@ std::vector<Landmark> parsePosePacket(const mediapipe::Packet& packet, uint8_t* 
     assert(landmarks.landmark_size() == num_landmarks);
 
     std::vector<Landmark> output(num_landmarks);
-      
-    for (int idx = 0; idx < num_landmarks; ++idx) { 
-        const mediapipe::NormalizedLandmark& landmark = landmarks.landmark(idx);
-    
-        output[idx] = {
-	        .x = landmark.x(),
-            .y = landmark.y(),
-            .z = landmark.z(),
-            .visibility = landmark.visibility(),
-            .presence = landmark.presence(),
-        };
-    }
+
+    copyLandmarks(landmarks, output, 0);
 
     *num_features = 1;
 
@@ -172,6 +184,10 @@ std::vector<Landmark> parsePacket(const mediapipe::Packet& packet, const Feature
     switch (type) {
         case FeatureType::FACE:
             return parseFacePacket(packet, num_features);
+        case FeatureType::FACES:
+            return parseFacesPacket(packet, num_features);
+        case FeatureType::HAND:
+            return parseHandPacket(packet, num_features);
         case FeatureType::HANDS:
             return parseHandsPacket(packet, num_features);
         case FeatureType::POSE:

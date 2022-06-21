@@ -33,6 +33,8 @@ struct Landmark {
 
 enum FeatureType {
     FACE,
+    FACES,
+    HAND,
     HANDS,
     POSE,
     POSES,
