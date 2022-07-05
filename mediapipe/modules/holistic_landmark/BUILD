@@ -265,3 +265,17 @@ mediapipe_simple_subgraph(
         "//mediapipe/modules/pose_landmark:pose_landmark_cpu",
     ],
 )
+
+mediapipe_simple_subgraph(
+    name = "multi_person_holistic_landmark_cpu",
+    graph = "multi_person_holistic_landmark_cpu.pbtxt",
+    register_as = "MultiPersonHolisticLandmarkCpu",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":face_landmarks_from_pose_cpu",
+        ":hand_landmarks_left_and_right_cpu",
+        "//mediapipe/calculators/core:flow_limiter_calculator",
+        "//mediapipe/calculators/image:image_transformation_calculator",
+        "//mediapipe/modules/pose_landmark:pose_landmark_cpu",
+    ],
+)

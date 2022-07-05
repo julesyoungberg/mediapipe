@@ -54,3 +54,10 @@ mediapipe_binary_graph(
     output_name = "pose_tracking_cpu.binarypb",
     deps = [":pose_tracking_cpu_deps"],
 )
+
+mediapipe_binary_graph(
+    name = "multi_person_pose_tracking_cpu",
+    graph = "multi_person_pose_tracking_cpu.pbtxt",
+    output_name = "multi_person_pose_Tracking.cpu.binarypb",
+    deps = [":pose_tracking_cpu_deps"],
+)

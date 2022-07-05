@@ -159,6 +159,28 @@ mediapipe_simple_subgraph(
     ],
 )
 
+mediapipe_simple_subgraph(
+    name = "multi_pose_landmark_cpu",
+    raph = "pose_landmark_cpu.pbtxt",
+    register_as = "MultiPoseLandmarkCpu",
+    deps = [
+        ":pose_detection_to_roi",
+        ":pose_landmark_by_roi_cpu",
+        ":pose_landmark_filtering",
+        ":pose_landmarks_to_roi",
+        ":pose_segmentation_filtering",
+        "//mediapipe/calculators/core:constant_side_packet_calculator",
+        "//mediapipe/calculators/core:gate_calculator",
+        "//mediapipe/calculators/core:merge_calculator",
+        "//mediapipe/calculators/core:packet_presence_calculator",
+        "//mediapipe/calculators/core:previous_loopback_calculator",
+        "//mediapipe/calculators/core:split_vector_calculator",
+        "//mediapipe/calculators/image:image_properties_calculator",
+        "//mediapipe/calculators/util:from_image_calculator",
+        "//mediapipe/modules/pose_detection:pose_detection_cpu",
+    ],
+)
+
 exports_files(
     srcs = [
         "pose_landmark_full.tflite",

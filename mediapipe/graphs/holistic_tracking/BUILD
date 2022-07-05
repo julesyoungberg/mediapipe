@@ -68,3 +68,10 @@ cc_library(
         "//mediapipe/modules/holistic_landmark:holistic_landmark_cpu",
     ],
 )
+
+mediapipe_binary_graph(
+    name = "multi_person_holistic_tracking_cpu",
+    graph = "multi_person_holistic_tracking_cpu.pbtxt",
+    output_name = "multi_person_holistic_tracking_cpu.binarypb",
+    deps = [":holistic_tracking_cpu_graph_deps"]
+)
