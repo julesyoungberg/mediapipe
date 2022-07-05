@@ -161,7 +161,7 @@ mediapipe_simple_subgraph(
 
 mediapipe_simple_subgraph(
     name = "multi_pose_landmark_cpu",
-    graph = "pose_landmark_cpu.pbtxt",
+    graph = "multi_pose_landmark_cpu.pbtxt",
     register_as = "MultiPoseLandmarkCpu",
     deps = [
         ":pose_detection_to_roi",
