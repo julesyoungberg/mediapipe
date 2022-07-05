@@ -187,6 +187,7 @@ cc_library(
 
         # Holistic tracking
         "//mediapipe/graphs/holistic_tracking:holistic_tracking_cpu_graph_deps",
+        "//mediapipe/modules/holistic_landmark:multi_person_holistic_landmark_cpu",
 
         # Iris tracking
         # "//mediapipe/graphs/iris_tracking:iris_tracking_cpu_deps",
@@ -206,8 +207,6 @@ cc_library(
 
         # Pose tracking
         "//mediapipe/graphs/pose_tracking:pose_tracking_cpu_deps",
-
-        # Multi Pose tracking
         "//mediapipe/modules/pose_landmark:multi_pose_landmark_cpu",
 	],
 )
