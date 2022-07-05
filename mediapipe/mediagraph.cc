@@ -20,8 +20,12 @@ Detector::~Detector() {
     dynamic_cast<DetectorImpl*>(this)->~DetectorImpl();
 }
 
-Landmark* Detector::Process(uint8_t* data, int width, int height, uint8_t* num_features) {
-    return dynamic_cast<DetectorImpl*>(this)->Process(data, width, height, num_features);
+uint8_t* Detector::Process(uint8_t* data, int width, int height, uint8_t* num_frames) {
+    return dynamic_cast<DetectorImpl*>(this)->Process(data, width, height, num_frames);
+}
+
+Landmark* Detector::GetLandmarks(uint8_t* num_features) {
+    return dynamic_cast<DetectorImpl*>(this)->GetLandmarks(num_features);
 }
 
 Effect* Effect::Create(const char* graph_config, const char* output_node) {

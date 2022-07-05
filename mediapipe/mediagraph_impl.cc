@@ -38,15 +38,29 @@ absl::Status DetectorImpl::Init(const char* graph, const Output* outputs, uint8_
 
     LOG(INFO) << "Start running the calculator graph.";
 
-    out_packets_ = std::vector<std::deque<mediapipe::Packet>>(num_outputs_);
-    out_mutexes_ = std::vector<absl::Mutex>(num_outputs_);
+    out_packets_ = std::vector<std::deque<mediapipe::Packet>>(0);
+    out_mutexes_ = std::vector<absl::Mutex>(0);
+    pollers_ = std::vector<absl::StatusOr<mediapipe::OutputStreamPoller>>(0);
+    num_frame_outputs_ = 0;
 
     for (uint i = 0; i < num_outputs_; ++i) {
-        auto out_cb = [&, i](const mediapipe::Packet& p) {
-            absl::MutexLock lock(&out_mutexes_[i]);
-            out_packets_[i].push_back(p);
-            if (out_packets_[i].size() > 2) {
-                out_packets_[i].erase(out_packets_[i].begin(), out_packets_[i].begin() + 1);
+        if (outputs_[i].type == OutputType::IMAGE) {
+            absl::StatusOr<mediapipe::OutputStreamPoller> poller;
+            ASSIGN_OR_RETURN(poller, graph_.AddOutputStreamPoller(outputs_[i].name));
+            pollers_.push(poller);
+            ++num_frame_outputs_;
+            continue;
+        }
+
+        auto idx = out_packets_.size();
+        out_packets_.push(std::dequeu<mediapipe::Packet>());
+        out_mutexes_.push(absl::Mutex());
+
+        auto out_cb = [&, idx](const mediapipe::Packet& p) {
+            absl::MutexLock lock(&out_mutexes_[idx]);
+            out_packets_[idx].push_back(p);
+            if (out_packets_[idx].size() > 2) {
+                out_packets_[idx].erase(out_packets_[idx].begin(), out_packets_[idx].begin() + 1);
             }
             return absl::OkStatus();
         };
@@ -159,7 +173,7 @@ std::vector<Landmark> parsePacket(const mediapipe::Packet& packet, const Feature
     }
 }
 
-Landmark* DetectorImpl::Process(uint8_t* data, int width, int height, uint8_t* num_features) {
+uint8_t* DetectorImpl::Process(uint8_t* data, int width, int height, uint8_t* num_frames) {
     if (data == nullptr){
         LOG(INFO) << __FUNCTION__ << " input data is nullptr!";
         return nullptr;
@@ -185,26 +199,85 @@ Landmark* DetectorImpl::Process(uint8_t* data, int width, int height, uint8_t* n
         return nullptr;
     }
 
+    uint8_t frame_idx = 0;
+    mediapipe::Packet packet;
+    std::vector<&mediapipe::ImageFrame> frames;
+    size_t image_bytes = 0;
+
+    for (uint i = 0; i < num_outputs_; ++i) {
+        auto& output = outputs_[i];
+        if (!(output.type == FeatureType::IMAGE || output.type == FeatureType::IMAGES)) {
+            continue;
+        }
+
+        if (pollers_[frame_idx]->Next(&packet)) {
+            if (output.type == FeatureType::IMAGE) {
+                const mediapipe::ImageFrame &output_frame = packet.Get<mediapipe::ImageFrame>();
+
+                if (image_bytes == 0) {
+                    image_bytes = output_frame.PixelDataSizeStoredContiguously();
+                }
+
+                frames.push(output_frame);
+                num_frames[frame_idx] = 1;
+            } else {
+                const auto& output_frames = paacket.Get<std::vector<mediapipe::ImageFrame>>();
+                num_frames[frame_idx] = output_frames.size();
+                
+                if (num_frams[frame_idx] > 0) {
+                    if (image_bytes == 0) {
+                        image_bytes = output_frames[0].PixelDataSizeStoredContigously();
+                    }
+
+                    frames.insert(frames.end(), output_frames.begin(), output_frames.end());
+                }
+            }
+        } else {
+            num_frames[frame_idx] = 0;
+        }
+        
+        ++frame_idx;
+    }
+
+    uint8_t* out_data = new uint8_t[image_bytes * frames.size()];
+
+    for (uint i = 0; i < frames.size(); ++i) {
+        frame.CopyToBuffer((uint8*)(output_data + i), image_bytes);
+    }
+
+    return out_data;
+}
+
+Landmark* Detector::GetLandmarks(uint8_t* num_features) {
+    uint8_t frame_idx = 0;
     std::vector<Landmark> landmarks;
     mediapipe::Packet packet;
 
     for (uint i = 0; i < num_outputs_; ++i) {
-        {
-            absl::MutexLock lock(&out_mutexes_[i]);
+        auto& output = outputs_[i];
+        if (output.type == FeatureType::IMAGE || output.type == FeatureType::IMAGES) {
+            ++frame_idx;
+            continue;
+        }
 
-            auto size = out_packets_[i].size();
+        auto idx = i - frame_idx;
+
+        {
+            absl::MutexLock lock(&out_mutexes_[idx]);
+
+            auto size = out_packets_[idx].size();
             if (size == 0) {
-                num_features[i] = 0;
+                num_features[idx] = 0;
                 continue;
             }
 
-            packet = out_packets_[i].front();
+            packet = out_packets_[idx].front();
         }
 
-        auto result = parsePacket(packet, outputs_[i].type, num_features + i);
+        auto result = parsePacket(packet, output.type, num_features + idx);
 
         if (result.size() > 0) {
-            landmarks.insert(landmarks.end(), result.begin(), result.end());
+            landmarks.insert(landmarks.end(), result.beegin(), result.end());
         }
     }
 

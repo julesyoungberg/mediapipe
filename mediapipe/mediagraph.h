@@ -36,6 +36,7 @@ enum FeatureType {
     FACES,
     HAND,
     HANDS,
+    IMAGE,
     POSE,
     POSES,
 };
@@ -56,7 +57,9 @@ public:
     // If a result is available it is returned.
     // Input data is expected to be ImageFormat::SRGB (24bits)
     // Returns an empty vector if nothing is detected.
-    virtual Landmark* Process(uint8_t* data, int width, int height, uint8_t* num_features);
+    virtual uint8_t* Process(uint8_t* data, int width, int height, uint8_t* num_frames);
+
+    virtual Landmark* GetLandmarks(uint8_t* num_features);
 };
 
 class Effect {

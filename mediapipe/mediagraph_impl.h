@@ -37,14 +37,19 @@ public:
 
     absl::Status Init(const char* graph, const Output* outputs, uint8_t num_outputs);
 
-    Landmark* Process(uint8_t* data, int width, int height, uint8_t* num_features) override;
+    uint8_t* Process(uint8_t* data, int width, int height, uint8_t* num_frames) override;
+
+    Landmark* GetLandmarks(uint8_t* num_features) override;
+
 private:
     mediapipe::CalculatorGraph graph_;
     size_t frame_timestamp_ = 0;
     std::vector<Output> outputs_;
     std::vector<std::deque<mediapipe::Packet>> out_packets_;
     std::vector<absl::Mutex> out_mutexes_;
+    std::vector<absl::StatusOr<mediapipe::OutputStreamPoller>> pollers_;
     uint8_t num_outputs_;
+    uint8_t num_frame_outputs_;
 };
 
 class EffectImpl : public Effect {

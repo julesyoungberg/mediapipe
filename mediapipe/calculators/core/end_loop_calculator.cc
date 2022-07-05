@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "mediapipe/framework/formats/classification.pb.h"
+#include "mediapipe/framework/formats/image.h"
 #include "mediapipe/framework/formats/landmark.pb.h"
 #include "mediapipe/framework/formats/rect.pb.h"
 #include "mediapipe/util/render_data.pb.h"
@@ -49,5 +50,9 @@ REGISTER_CALCULATOR(EndLoopClassificationListCalculator);
 
 typedef EndLoopCalculator<std::vector<TfLiteTensor>> EndLoopTensorCalculator;
 REGISTER_CALCULATOR(EndLoopTensorCalculator);
+
+typedef EndLoopImageCalculator<std::vector<mediapipe::ImageFrame>>
+    EndLoopImageCalculator;
+REGISTER_CALCULATOR(EndLoopImageCalculator);
 
 }  // namespace mediapipe
