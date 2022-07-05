@@ -106,7 +106,7 @@ output_stream: "WORLD_LANDMARKS:multi_pose_world_landmarks"
 
 # Extra outputs (for debugging, for instance).
 # Detected poses. (Detection)
-# output_stream: "DETECTION:pose_detection"
+output_stream: "DETECTIONS:pose_detections"
 # Regions of interest calculated based on landmarks. (NormalizedRect)
 output_stream: "ROI_FROM_LANDMARKS:pose_rects_from_landmarks"
 # Regions of interest calculated based on pose detections. (NormalizedRect)
