@@ -206,6 +206,9 @@ cc_library(
 
         # Pose tracking
         "//mediapipe/graphs/pose_tracking:pose_tracking_cpu_deps",
+
+        # Multi Pose tracking
+        "//mediapipe/modules/pose_landmark:multi_pose_landmark_cpu",
 	],
 )
 
