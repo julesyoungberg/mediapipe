@@ -104,9 +104,6 @@ output_stream: "LANDMARKS:multi_pose_landmarks"
 # coordinates (in meters) of the 3D object itself.
 output_stream: "WORLD_LANDMARKS:multi_pose_world_landmarks"
 
-# Segmentation mask. (ImageFrame in ImageFormat::VEC32F1)
-output_stream: "SEGMENTATION_MASK:segmentation_masks"
-
 # Extra outputs (for debugging, for instance).
 # Detected poses. (Detection)
 # output_stream: "DETECTION:pose_detection"
@@ -352,13 +349,4 @@ node: {
   calculator: "FromImageCalculator"
   input_stream: "IMAGE:filtered_segmentation_mask"
   output_stream: "IMAGE_CPU:segmentation_mask"
-}
-
-# Collects a segmentation mask for each pose into a vector. Upon receiving the
-# BATCH_END timestamp, outputs the vector of masks at the BATCH_END timestamp.
-node {
-  calculator: "EndLoopRenderDataCalculator"
-  input_stream: "ITEM:segmentation_mask"
-  input_stream: "BATCH_END:pose_rects_timesamp"
-  output_stream: "ITERABLE:segmentation_masks"
 }

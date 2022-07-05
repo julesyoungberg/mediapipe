@@ -92,9 +92,6 @@ output_stream: "RIGHT_HAND_LANDMARKS:multi_right_hand_landmarks"
 # 468 face landmarks. (NormalizedLandmarkList)
 output_stream: "FACE_LANDMARKS:multi_face_landmarks"
 
-# Segmentation mask. (ImageFrame in ImageFormat::VEC32F1)
-output_stream: "SEGMENTATION_MASK:segmentation_masks"
-
 # Debug outputs
 output_stream: "POSE_ROI:pose_landmarks_rois"
 output_stream: "POSE_DETECTION:pose_detections"
@@ -110,7 +107,6 @@ node {
   input_side_packet: "USE_PREV_LANDMARKS:use_prev_landmarks"
   output_stream: "LANDMARKS:multi_pose_landmarks"
   output_stream: "WORLD_LANDMARKS:multi_pose_world_landmarks"
-  output_stream: "SEGMENTATION_MASK:segmentation_masks"
   output_stream: "ROI_FROM_LANDMARKS:pose_landmarks_rois"
   output_stream: "DETECTION:pose_detections"
 }

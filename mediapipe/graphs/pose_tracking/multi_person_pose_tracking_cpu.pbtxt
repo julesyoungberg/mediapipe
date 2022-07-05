@@ -6,8 +6,6 @@ input_stream: "input_video"
 # Output image with rendered results. (ImageFrame)
 output_stream: "multi_pose_landmarks"
 
-output_steam: "segmentation_masks"
-
 output_stream: "pose_detections"
 
 output_stream: "roi_from_landmarks"
@@ -50,7 +48,6 @@ node {
   input_side_packet: "ENABLE_SEGMENTATION:enable_segmentation"
   input_stream: "IMAGE:throttled_input_video"
   output_stream: "LANDMARKS:multi_pose_landmarks"
-  output_stream: "SEGMENTATION_MASK:segmentation_masks"
   output_stream: "DETECTION:pose_detections"
   output_stream: "ROI_FROM_LANDMARKS:roi_from_landmarks"
 }
