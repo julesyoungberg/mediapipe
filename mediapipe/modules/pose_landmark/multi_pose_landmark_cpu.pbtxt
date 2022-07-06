@@ -127,15 +127,6 @@ node {
   }
 }
 
-# Determines if an input vector of NormalizedRect has a size greater than or
-# equal to the provided num_hands.
-node {
-  calculator: "NormalizedRectVectorHasMinSizeCalculator"
-  input_stream: "ITERABLE:gated_prev_pose_rects_from_landmarks"
-  input_side_packet: "num_poses"
-  output_stream: "prev_has_enough_poses"
-}
-
 # Checks if there's previous pose rect calculated from landmarks.
 node: {
   calculator: "PacketPresenceCalculator"
@@ -158,7 +149,7 @@ node {
   input_stream: "image"
   input_stream: "image_size"
   input_stream: "DISALLOW:prev_pose_rects_from_landmarks_is_present"
-  output_stream: "image_for_pose_detection"
+  output_stream: "pose_detection_image"
   output_stream: "image_size_for_pose_detection"
   options: {
     [mediapipe.GateCalculatorOptions.ext] {
@@ -170,16 +161,8 @@ node {
 # Detects poses.
 node {
   calculator: "PoseDetectionCpu"
-  input_stream: "IMAGE:image_for_pose_detection"
-  output_stream: "DETECTIONS:all_pose_detections"
-}
-
-# Makes sure there are no more detections than the provided num_poses.
-node {
-  calculator: "ClipDetetionVectorSizeCalculator"
-  input_stream: "all_pose_detections"
-  output_stream: "pose_detections"
-  input_side_packet: "num_poses"
+  input_stream: "IMAGE:pose_detection_image"
+  output_stream: "DETECTIONS:pose_detections"
 }
 
 # Extracts image size.
