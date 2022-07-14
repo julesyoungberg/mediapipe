@@ -32,6 +32,9 @@ type: "MultiPoseLandmarkCpu"
 # CPU image. (ImageFrame)
 input_stream: "IMAGE:image"
 
+# Max number of poses to detect/track. (int)
+input_side_packet: "NUM_POSES:num_poses"
+
 # Whether to filter landmarks across different input images to reduce jitter.
 # If unspecified, functions as set to true. (bool)
 input_side_packet: "SMOOTH_LANDMARKS:smooth_landmarks"
@@ -127,30 +130,23 @@ node {
   }
 }
 
-# Checks if there's previous pose rect calculated from landmarks.
-node: {
-  calculator: "PacketPresenceCalculator"
-  input_stream: "PACKET:gated_prev_pose_rects_from_landmarks"
-  output_stream: "PRESENCE:prev_pose_rects_from_landmarks_is_present"
-}
-
-# Calculates size of the image.
+# Determines if an input vector of NormalizedRect has a size greater than or
+# equal to the provided num_poses.
 node {
-  calculator: "ImagePropertiesCalculator"
-  input_stream: "IMAGE_CPU:image"
-  output_stream: "SIZE:image_size"
+  calculator: "NormalizedRectVectorHasMinSizeCalculator"
+  input_stream: "ITERABLE:gated_prev_pose_rects_from_landmarks"
+  input_side_packet: "num_poses"
+  output_stream: "prev_has_enough_poses"
 }
 
-# Drops the incoming image if the pose has already been identified from the
-# previous image. Otherwise, passes the incoming image through to trigger a new
+# Drops the incoming image if enough poses have already been identified from the 
+# previous image. Otherwise, passes the incoming image trhough to trigger a new
 # round of pose detection.
 node {
   calculator: "GateCalculator"
   input_stream: "image"
-  input_stream: "image_size"
-  input_stream: "DISALLOW:prev_pose_rects_from_landmarks_is_present"
+  input_stream: "DISALLOW:prev_has_enough_poses"
   output_stream: "pose_detection_image"
-  output_stream: "image_size_for_pose_detection"
   options: {
     [mediapipe.GateCalculatorOptions.ext] {
       empty_packets_as_allow: true
@@ -162,7 +158,15 @@ node {
 node {
   calculator: "PoseDetectionCpu"
   input_stream: "IMAGE:pose_detection_image"
-  output_stream: "DETECTIONS:pose_detections"
+  output_stream: "DETECTIONS:all_pose_detections"
+}
+
+# Makes sure there are no more detections than the provided num_poses.
+node {
+  calculator: "ClipDetectionVectorSizeCalculator"
+  input_stream: "all_pose_detections"
+  output_stream: "pose_detections"
+  input_side_packet: "num_poses"
 }
 
 # Extracts image size.
@@ -219,6 +223,13 @@ node {
       min_similarity_threshold: 0.5
     }
   }
+}
+
+# Extracts image size.
+node {
+  calculator: "ImagePropertiesCalculator"
+  input_stream: "IMAGE_CPU:image"
+  output_stream: "SIZE:image_size"
 }
 
 # Outputs each element of pose_rects at a fake timestamp for the rest of the
