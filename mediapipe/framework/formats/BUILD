@@ -187,6 +187,21 @@ cc_library(
     ],
 )
 
+config_setting(
+    name = "opencv",
+    define_values = {
+        "use_opencv": "true",
+    },
+)
+
+config_setting(
+    name = "portable_opencv",
+    define_values = {
+        "use_portable_opencv": "true",
+        "use_opencv": "false",
+    },
+)
+
 cc_library(
     name = "location",
     srcs = ["location.cc"],
@@ -194,6 +209,8 @@ cc_library(
     defines = select({
         "//conditions:default": [],
         "//mediapipe:android": ["MEDIAPIPE_ANDROID_OPENCV"],
+        ":portable_opencv": ["MEDIAPIPE_ANDROID_OPENCV"],
+        ":opencv": [],
     }),
     visibility = ["//visibility:public"],
     deps = [
@@ -332,15 +349,13 @@ cc_library(
         "//mediapipe/framework:port",
         "//mediapipe/framework:type_map",
         "//mediapipe/framework/port:logging",
+        "//mediapipe/gpu:gpu_buffer",
+        "//mediapipe/gpu:gpu_buffer_format",
     ] + select({
         "//conditions:default": [
-            "//mediapipe/gpu:gpu_buffer",
-            "//mediapipe/gpu:gpu_buffer_format",
             "//mediapipe/gpu:gl_texture_buffer",
         ],
         "//mediapipe:ios": [
-            "//mediapipe/gpu:gpu_buffer",
-            "//mediapipe/gpu:gpu_buffer_format",
         ],
         "//mediapipe/gpu:disable_gpu": [],
     }) + select({
@@ -430,7 +445,11 @@ cc_test(
 
 cc_library(
     name = "tensor",
-    srcs = ["tensor.cc"],
+    srcs =
+        [
+            "tensor.cc",
+            "tensor_ahwb.cc",
+        ],
     hdrs = ["tensor.h"],
     copts = select({
         "//mediapipe:apple": [
@@ -445,6 +464,9 @@ cc_library(
             "-framework MetalKit",
         ],
         "//conditions:default": [],
+        "//mediapipe:android": [
+            "-landroid",
+        ],
     }),
     visibility = ["//visibility:public"],
     deps = [

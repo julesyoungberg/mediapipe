@@ -115,7 +115,10 @@ mediapipe_proto_library(
     name = "packet_test_proto",
     testonly = 1,
     srcs = ["packet_test.proto"],
-    visibility = ["//mediapipe/framework:__subpackages__"],
+    visibility = [
+        ":mediapipe_internal",
+        "//mediapipe/framework:__subpackages__",
+    ],
 )
 
 mediapipe_proto_library(
@@ -148,6 +151,13 @@ mediapipe_proto_library(
     srcs = ["thread_pool_executor.proto"],
     visibility = [":mediapipe_internal"],
     deps = ["//mediapipe/framework:mediapipe_options_proto"],
+)
+
+config_setting(
+    name = "android_no_jni",
+    define_values = {"MEDIAPIPE_NO_JNI": "1"},
+    values = {"crosstool_top": "//external:android/crosstool"},
+    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -227,7 +237,9 @@ cc_library(
         "//mediapipe/framework/tool:options_map",
         "//mediapipe/framework/tool:packet_generator_wrapper_calculator_cc_proto",
         "//mediapipe/framework/tool:tag_map",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -341,6 +353,7 @@ cc_library(
         "//mediapipe/framework/tool:validate",
         "//mediapipe/framework/tool:validate_name",
         "//mediapipe/gpu:graph_support",
+        "//mediapipe/gpu:gpu_service",
         "//mediapipe/util:cpu_util",
     ] + select({
         "//conditions:default": ["//mediapipe/gpu:gpu_shared_data_internal"],
@@ -409,7 +422,6 @@ cc_library(
         "//mediapipe/framework/tool:status_util",
         "//mediapipe/framework/tool:tag_map",
         "//mediapipe/framework/tool:validate_name",
-        "//mediapipe/gpu:graph_support",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
@@ -606,7 +618,11 @@ cc_library(
     hdrs = ["graph_service.h"],
     visibility = [":mediapipe_internal"],
     deps = [
+        ":packet",
+        "//mediapipe/framework/port:status",
+        "//mediapipe/framework/port:statusor",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -712,6 +728,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/synchronization",
     ],
 )
 
@@ -916,15 +933,19 @@ cc_library(
         ":packet",
         ":packet_set",
         ":type_map",
+        "//mediapipe/framework/deps:no_destructor",
         "//mediapipe/framework/port:logging",
         "//mediapipe/framework/port:map_util",
-        "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:source_location",
         "//mediapipe/framework/port:status",
         "//mediapipe/framework/tool:status_util",
+        "//mediapipe/framework/tool:type_util",
         "//mediapipe/framework/tool:validate_name",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
     ],
 )
 
@@ -955,6 +976,7 @@ cc_library(
         ],
     }),
     visibility = [
+        "//fitbit/research/sensing/mobisense:__subpackages__",
         "//mediapipe/calculators:__subpackages__",
         "//mediapipe/framework:__subpackages__",
         "//mediapipe/framework/port:__pkg__",
@@ -1409,6 +1431,7 @@ cc_test(
         "//mediapipe/framework/stream_handler:timestamp_align_input_stream_handler",
         "//mediapipe/framework/tool:sink",
         "//mediapipe/framework/tool:status_util",
+        "//mediapipe/gpu:graph_support",
         "@com_google_absl//absl/container:fixed_array",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",

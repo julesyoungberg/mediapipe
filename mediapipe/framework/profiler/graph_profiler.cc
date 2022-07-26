@@ -43,7 +43,7 @@ const int kDefaultLogFileCount = 2;
 const char kDefaultLogFilePrefix[] = "mediapipe_trace_";
 
 // The number of recent timestamps tracked for each input stream.
-const int kPacketInfoRecentCount = 100;
+const int kPacketInfoRecentCount = 400;
 
 std::string PacketIdToString(const PacketId& packet_id) {
   return absl::Substitute("stream_name: $0, timestamp_usec: $1",
@@ -507,8 +507,8 @@ int64 GraphProfiler::AddInputStreamTimeSamples(
       // This is a condition rather than a failure CHECK because
       // under certain conditions the consumer calculator's Process()
       // can start before the producer calculator's Process() is finished.
-      LOG_EVERY_N(WARNING, 100) << "Expected packet info is missing for: "
-                                << PacketIdToString(packet_id);
+      LOG_FIRST_N(WARNING, 10) << "Expected packet info is missing for: "
+                               << PacketIdToString(packet_id);
       continue;
     }
     AddTimeSample(
@@ -600,12 +600,17 @@ void AssignNodeNames(GraphProfile* profile) {
   if (graph_trace) {
     graph_trace->clear_calculator_name();
   }
+  std::vector<std::string> canonical_names;
+  canonical_names.reserve(graph_config->node().size());
   for (int i = 0; i < graph_config->node().size(); ++i) {
-    std::string node_name = CanonicalNodeName(*graph_config, i);
-    graph_config->mutable_node(i)->set_name(node_name);
-    if (graph_trace) {
-      graph_trace->add_calculator_name(node_name);
-    }
+    canonical_names.push_back(CanonicalNodeName(*graph_config, i));
+  }
+  for (int i = 0; i < graph_config->node().size(); ++i) {
+    graph_config->mutable_node(i)->set_name(canonical_names[i]);
+  }
+  if (graph_trace) {
+    graph_trace->mutable_calculator_name()->Assign(canonical_names.begin(),
+                                                   canonical_names.end());
   }
 }
 
@@ -646,7 +651,8 @@ absl::StatusOr<std::string> GraphProfiler::GetTraceLogPath() {
   }
 }
 
-absl::Status GraphProfiler::CaptureProfile(GraphProfile* result) {
+absl::Status GraphProfiler::CaptureProfile(
+    GraphProfile* result, PopulateGraphConfig populate_config) {
   // Record the GraphTrace events since the previous WriteProfile.
   // The end_time is chosen to be trace_log_margin_usec in the past,
   // providing time for events to be appended to the TraceBuffer.
@@ -674,6 +680,10 @@ absl::Status GraphProfiler::CaptureProfile(GraphProfile* result) {
   }
   this->Reset();
   CleanCalculatorProfiles(result);
+  if (populate_config == PopulateGraphConfig::kFull) {
+    *result->mutable_config() = validated_graph_->Config();
+    AssignNodeNames(result);
+  }
   return status;
 }
 
@@ -686,7 +696,7 @@ absl::Status GraphProfiler::WriteProfile() {
   int log_interval_count = GetLogIntervalCount(profiler_config_);
   int log_file_count = GetLogFileCount(profiler_config_);
   GraphProfile profile;
-  MP_RETURN_IF_ERROR(CaptureProfile(&profile));
+  MP_RETURN_IF_ERROR(CaptureProfile(&profile, PopulateGraphConfig::kNo));
 
   // If there are no trace events, skip log writing.
   const GraphTrace& trace = *profile.graph_trace().rbegin();

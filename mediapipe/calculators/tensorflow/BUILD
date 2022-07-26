@@ -334,6 +334,7 @@ cc_library(
         ":image_frame_to_tensor_calculator_cc_proto",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/formats:image_frame",
+        "//mediapipe/framework/port:core_proto",
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",
     ] + select({
@@ -752,7 +753,6 @@ cc_library(
         "//mediapipe/calculators/tensorflow:unpack_media_sequence_calculator_cc_proto",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/formats:location",
-        "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",
         "//mediapipe/util:audio_decoder_cc_proto",
         "//mediapipe/util/sequence:media_sequence",

@@ -43,6 +43,7 @@ bzl_library(
         "//mediapipe/framework:transitive_protos_bzl",
         "//mediapipe/framework/deps:descriptor_set_bzl",
         "//mediapipe/framework/deps:expand_template_bzl",
+        "@org_tensorflow//tensorflow/lite/core/shims:cc_library_with_tflite_bzl",
     ],
 )
 
@@ -52,6 +53,7 @@ bzl_library(
         "build_defs.bzl",
     ],
     visibility = [
+        "//mediapipe/app/xeno/catalog:__subpackages__",
         "//mediapipe/framework:__subpackages__",
     ],
 )
@@ -132,7 +134,7 @@ cc_library(
     name = "name_util",
     srcs = ["name_util.cc"],
     hdrs = ["name_util.h"],
-    visibility = ["//mediapipe/framework:mediapipe_internal"],
+    visibility = ["//visibility:public"],
     deps = [
         ":validate_name",
         "//mediapipe/framework:calculator_cc_proto",
@@ -196,6 +198,7 @@ cc_library(
         ":name_util",
         ":options_registry",
         ":proto_util_lite",
+        ":type_util",
         "//mediapipe/framework:calculator_cc_proto",
         "//mediapipe/framework:packet",
         "//mediapipe/framework:packet_type",
@@ -275,9 +278,12 @@ cc_library(
     hdrs = ["options_registry.h"],
     visibility = ["//visibility:public"],
     deps = [
+        ":field_data_cc_proto",
+        ":proto_util_lite",
         "//mediapipe/framework/deps:registration",
         "//mediapipe/framework/port:advanced_proto",
         "//mediapipe/framework/port:logging",
+        "//mediapipe/framework/port:ret_check",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/synchronization",
     ],
@@ -286,6 +292,7 @@ cc_library(
 mediapipe_cc_test(
     name = "options_util_test",
     size = "small",
+    timeout = "moderate",
     srcs = ["options_util_test.cc"],
     # A non-empty "data" param is needed to build the "_test_wasm" target.
     data = [":node_chain_subgraph.proto"],
@@ -331,6 +338,7 @@ cc_library(
     hdrs = ["proto_util_lite.h"],
     visibility = ["//visibility:public"],
     deps = [
+        ":field_data_cc_proto",
         "//mediapipe/framework:type_map",
         "//mediapipe/framework/port:advanced_proto_lite",
         "//mediapipe/framework/port:integral_types",
@@ -515,9 +523,11 @@ cc_library(
 cc_library(
     name = "type_util",
     hdrs = ["type_util.h"],
-    visibility = ["//mediapipe/framework:mediapipe_internal"],
+    visibility = ["//visibility:public"],
     deps = [
+        "//mediapipe/framework:demangle",
         "//mediapipe/framework:port",
+        "@com_google_absl//absl/base:core_headers",
     ],
 )
 
@@ -758,9 +768,11 @@ cc_library(
         "//mediapipe/framework/formats:image_frame",
         "//mediapipe/framework/port:advanced_proto",
         "//mediapipe/framework/port:file_helpers",
+        "//mediapipe/framework/port:gtest",
         "//mediapipe/framework/port:logging",
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",
+        "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
@@ -858,11 +870,9 @@ cc_library(
         "//mediapipe/framework:calculator_cc_proto",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework:mediapipe_options_cc_proto",
-        "//mediapipe/framework:stream_handler_cc_proto",
         "//mediapipe/framework:subgraph",
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",
-        "//mediapipe/framework/stream_handler:sync_set_input_stream_handler_cc_proto",
         "//mediapipe/framework/tool:switch_container_cc_proto",
     ],
     alwayslink = 1,

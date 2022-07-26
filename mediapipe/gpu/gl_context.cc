@@ -23,6 +23,7 @@
 
 #include "absl/base/dynamic_annotations.h"
 #include "absl/memory/memory.h"
+#include "absl/status/status.h"
 #include "absl/synchronization/mutex.h"
 #include "mediapipe/framework/port/logging.h"
 #include "mediapipe/framework/port/ret_check.h"
@@ -304,7 +305,7 @@ absl::Status GlContext::FinishInitialization(bool create_thread) {
       glGetIntegerv(GL_MINOR_VERSION, &gl_minor_version_);
     } else {
       // GL_MAJOR_VERSION is not supported on GL versions below 3. We have to
-      // parse the version std::string.
+      // parse the version string.
       if (!ParseGlVersion(version_string, &gl_major_version_,
                           &gl_minor_version_)) {
         LOG(WARNING) << "invalid GL_VERSION format: '" << version_string
@@ -344,7 +345,8 @@ absl::Status GlContext::FinishInitialization(bool create_thread) {
 #if GL_ES_VERSION_2_0  // This actually means "is GLES available".
     // No linear float filtering by default, check extensions.
     can_linear_filter_float_textures_ =
-        HasGlExtension("OES_texture_float_linear");
+        HasGlExtension("OES_texture_float_linear") ||
+        HasGlExtension("GL_OES_texture_float_linear");
 #else
     // Desktop GL should always allow linear filtering.
     can_linear_filter_float_textures_ = true;
@@ -357,6 +359,7 @@ absl::Status GlContext::FinishInitialization(bool create_thread) {
 GlContext::GlContext() {}
 
 GlContext::~GlContext() {
+  destructing_ = true;
   // Note: on Apple platforms, this object contains Objective-C objects.
   // The destructor will release them, but ARC must be on.
 #ifdef __OBJC__
@@ -365,17 +368,33 @@ GlContext::~GlContext() {
 #endif
 #endif  // __OBJC__
 
+  auto clear_attachments = [this] {
+    attachments_.clear();
+    if (profiling_helper_) {
+      profiling_helper_->LogAllTimestamps();
+    }
+  };
+
   if (thread_) {
-    auto status = thread_->Run([this] {
-      if (profiling_helper_) {
-        profiling_helper_->LogAllTimestamps();
-      }
+    auto status = thread_->Run([this, clear_attachments] {
+      clear_attachments();
       return ExitContext(nullptr);
     });
     LOG_IF(ERROR, !status.ok())
         << "Failed to deactivate context on thread: " << status;
     if (thread_->IsCurrentThread()) {
       thread_.release()->SelfDestruct();
+    }
+  } else {
+    if (IsCurrent()) {
+      clear_attachments();
+    } else {
+      ContextBinding saved_context;
+      auto status = SwitchContextAndRun([&clear_attachments] {
+        clear_attachments();
+        return absl::OkStatus();
+      });
+      LOG_IF(ERROR, !status.ok()) << status;
     }
   }
   DestroyContext();
@@ -500,6 +519,14 @@ absl::Status GlContext::SwitchContext(ContextBinding* saved_context,
   }
 }
 
+GlContext::ContextBinding GlContext::ThisContextBinding() {
+  GlContext::ContextBinding result = ThisContextBindingPlatform();
+  if (!destructing_) {
+    result.context_object = shared_from_this();
+  }
+  return result;
+}
+
 absl::Status GlContext::EnterContext(ContextBinding* saved_context) {
   DCHECK(HasContext());
   return SwitchContext(saved_context, ThisContextBinding());
@@ -548,7 +575,11 @@ class GlFenceSyncPoint : public GlSyncPoint {
       : GlSyncPoint(gl_context) {
     gl_context_->Run([this] {
       sync_ = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+      // Defer the flush for WebGL until the glClientWaitSync call as it's a
+      // costly IPC call in Chrome's WebGL implementation.
+#ifndef __EMSCRIPTEN__
       glFlush();
+#endif
     });
   }
 
@@ -565,8 +596,17 @@ class GlFenceSyncPoint : public GlSyncPoint {
   void Wait() override {
     if (!sync_) return;
     gl_context_->Run([this] {
-      GLenum result =
-          glClientWaitSync(sync_, 0, std::numeric_limits<uint64_t>::max());
+      GLuint flags = 0;
+      uint64_t timeout = std::numeric_limits<uint64_t>::max();
+#ifdef __EMSCRIPTEN__
+      // Setting GL_SYNC_FLUSH_COMMANDS_BIT ensures flush happens before we wait
+      // on the fence. This is necessary since we defer the flush on WebGL.
+      flags = GL_SYNC_FLUSH_COMMANDS_BIT;
+      // WebGL only supports small implementation dependent timeout values. In
+      // particular, Chrome only supports a timeout of 0.
+      timeout = 0;
+#endif
+      GLenum result = glClientWaitSync(sync_, flags, timeout);
       if (result == GL_ALREADY_SIGNALED || result == GL_CONDITION_SATISFIED) {
         glDeleteSync(sync_);
         sync_ = nullptr;
@@ -592,7 +632,13 @@ class GlFenceSyncPoint : public GlSyncPoint {
     bool ready = false;
     // TODO: we should not block on the original context if possible.
     gl_context_->Run([this, &ready] {
-      GLenum result = glClientWaitSync(sync_, 0, 0);
+      GLuint flags = 0;
+#ifdef __EMSCRIPTEN__
+      // Setting GL_SYNC_FLUSH_COMMANDS_BIT ensures flush happens before we wait
+      // on the fence. This is necessary since we defer the flush on WebGL.
+      flags = GL_SYNC_FLUSH_COMMANDS_BIT;
+#endif
+      GLenum result = glClientWaitSync(sync_, flags, 0);
       if (result == GL_ALREADY_SIGNALED || result == GL_CONDITION_SATISFIED) {
         glDeleteSync(sync_);
         sync_ = nullptr;
