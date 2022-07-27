@@ -394,6 +394,12 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
     ],
+    linkopts = select({
+        "//mediapipe:macos": [
+            "-framework CoreFoundation",
+        ],
+        "//conditions:default": [],
+    }),
 )
 
 cc_library(
